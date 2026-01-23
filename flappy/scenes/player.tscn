@@ -1,21 +1,43 @@
-[gd_scene load_steps=2 format=3 uid="uid://dcprlbeik4h5b"]
+[gd_scene load_steps=6 format=3 uid="uid://dcprlbeik4h5b"]
+
+[ext_resource type="Texture2D" uid="uid://u53nem5wmclo" path="res://art/spritesheet.png" id="1_3vyb7"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3vyb7"]
+atlas = ExtResource("1_3vyb7")
+region = Rect2(0, 0, 32, 38)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_g2els"]
+atlas = ExtResource("1_3vyb7")
+region = Rect2(32, 0, 32, 38)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_u8vuu"]
 animations = [{
-"frames": [],
-"loop": true,
-"name": &"default",
-"speed": 5.0
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_3vyb7")
 }, {
-"frames": [],
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_g2els")
+}],
 "loop": true,
-"name": &"new_animation",
+"name": &"flap",
 "speed": 5.0
 }]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_3vyb7"]
+radius = 7.0
+height = 26.299597
 
 [node name="player" type="Area2D"]
 metadata/_edit_group_ = true
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+position = Vector2(0, -1)
+rotation = 0.17453292
 sprite_frames = SubResource("SpriteFrames_u8vuu")
-animation = &"new_animation"
+animation = &"flap"
+frame_progress = 0.96494704
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+rotation = 1.5707964
+shape = SubResource("CapsuleShape2D_3vyb7")
