@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://dcprlbeik4h5b"]
+[gd_scene format=3 uid="uid://dcprlbeik4h5b"]
 
 [ext_resource type="Texture2D" uid="uid://u53nem5wmclo" path="res://art/spritesheet.png" id="1_3vyb7"]
 [ext_resource type="Script" uid="uid://u5k2nq3nynqi" path="res://scenes/player.gd" id="1_g2els"]
@@ -29,17 +29,17 @@ animations = [{
 radius = 7.0
 height = 26.299597
 
-[node name="player" type="Area2D"]
+[node name="player" type="Area2D" unique_id=2091666533]
 script = ExtResource("1_g2els")
 metadata/_edit_group_ = true
 
-[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1856100418]
 position = Vector2(0, -1)
 rotation = 0.17453292
 sprite_frames = SubResource("SpriteFrames_u8vuu")
 animation = &"flap"
 frame_progress = 0.36046657
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1608356708]
 rotation = 1.5707964
 shape = SubResource("CapsuleShape2D_3vyb7")
