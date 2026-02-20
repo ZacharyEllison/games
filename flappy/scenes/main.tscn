@@ -1,8 +1,21 @@
 [gd_scene format=3 uid="uid://87danpruupp5"]
 
 [ext_resource type="PackedScene" uid="uid://dcprlbeik4h5b" path="res://scenes/player.tscn" id="1_o5qli"]
+[ext_resource type="Shader" path="res://shaders/sky_clouds.gdshader" id="2_hb4q6"]
+[ext_resource type="Script" path="res://scenes/main.gd" id="3_pk63f"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tbo0n"]
+shader = ExtResource("2_hb4q6")
 
 [node name="main" type="Node2D" unique_id=1303828959]
+script = ExtResource("3_pk63f")
+
+[node name="Sky" type="ColorRect" parent="."]
+z_index = -100
+material = SubResource("ShaderMaterial_tbo0n")
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
 
 [node name="player" parent="." unique_id=2091666533 instance=ExtResource("1_o5qli")]
 position = Vector2(187, 165)
