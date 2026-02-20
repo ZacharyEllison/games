@@ -1,20 +1,45 @@
 extends Area2D
 
-@export var rotateTheta = 10 # How fast the player will move (pixels/sec).
-var screen_size # Size of the game window
+@export var rise_speed := 190.0
+@export var fall_speed := 240.0
+@export var rotate_speed_deg := 420.0
+@export var up_angle_deg := -90.0
+@export var down_angle_deg := 90.0
+@export var bottom_margin := 18.0
 
+var screen_size := Vector2.ZERO
+var center_x := 0.0
+var waiting_for_press := true
 
-# Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	screen_size = get_viewport_rect().size
-	self.rotation = 0
+	center_x = screen_size.x * 0.5
+	_reset_to_center()
 
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta: float) -> void:
+func _physics_process(delta: float) -> void:
+	# Keep movement centered horizontally.
+	global_position.x = center_x
+
+	if waiting_for_press:
+		if Input.is_action_pressed("press"):
+			waiting_for_press = false
+		else:
+			return
+
+	var target_rotation = deg_to_rad(down_angle_deg)
+
 	if Input.is_action_pressed("press"):
-		if self.global_rotation_degrees <= 90 or self.global_rotation_degrees > -90 :
-			self.rotate(-deg_to_rad(self.rotateTheta))
+		target_rotation = deg_to_rad(up_angle_deg)
+		global_position.y -= rise_speed * delta
 	else:
-		if self.global_rotation_degrees != 10 :
-			self.rotate(deg_to_rad(self.rotateTheta))
-		#print(self.global_rotation_degrees)
+		global_position.y += fall_speed * delta
+
+	rotation = move_toward(rotation, target_rotation, deg_to_rad(rotate_speed_deg) * delta)
+
+	if global_position.y >= screen_size.y - bottom_margin:
+		_reset_to_center()
+
+func _reset_to_center() -> void:
+	waiting_for_press = true
+	global_position = screen_size * 0.5
+	rotation = 0.0
