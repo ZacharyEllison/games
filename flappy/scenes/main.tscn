@@ -28,3 +28,6 @@ mouse_filter = 2
 [node name="player" parent="." unique_id=2091666533 instance=ExtResource("1_o5qli")]
 position = Vector2(187, 165)
 scale = Vector2(1.5, 1.5)
+rise_speed = 300.0
+fall_speed = 300.0
+reset_offset = 50.0

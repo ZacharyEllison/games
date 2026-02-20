@@ -6,21 +6,19 @@ extends Area2D
 @export var up_angle_deg := -90.0
 @export var down_angle_deg := 90.0
 @export var bottom_margin := 18.0
+@export var reset_offset := 15.0
 
 @onready var animated_sprite: AnimatedSprite2D = $AnimatedSprite2D
 
 var screen_size := Vector2.ZERO
-var center_x := 0.0
 var waiting_for_press := true
 
 func _ready() -> void:
 	screen_size = get_viewport_rect().size
-	center_x = screen_size.x * 0.5
 	_reset_to_center()
 
 func _physics_process(delta: float) -> void:
 	# Keep movement centered horizontally.
-	global_position.x = center_x
 	var is_pressing := Input.is_action_pressed("press")
 
 	if waiting_for_press:
@@ -47,6 +45,7 @@ func _physics_process(delta: float) -> void:
 func _reset_to_center() -> void:
 	waiting_for_press = true
 	global_position = screen_size * 0.5
+	global_position.x -= reset_offset
 	rotation = 0.0
 	_set_flap_active(false)
 
