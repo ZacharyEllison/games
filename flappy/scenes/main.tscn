@@ -1,21 +1,30 @@
 [gd_scene format=3 uid="uid://87danpruupp5"]
 
 [ext_resource type="PackedScene" uid="uid://dcprlbeik4h5b" path="res://scenes/player.tscn" id="1_o5qli"]
-[ext_resource type="Shader" path="res://shaders/sky_clouds.gdshader" id="2_hb4q6"]
-[ext_resource type="Script" path="res://scenes/main.gd" id="3_pk63f"]
+[ext_resource type="Shader" uid="uid://c5m4h4au26sem" path="res://shaders/sky_clouds.gdshader" id="2_hb4q6"]
+[ext_resource type="Script" uid="uid://c823fin7gv315" path="res://scenes/main.gd" id="3_pk63f"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_tbo0n"]
 shader = ExtResource("2_hb4q6")
+shader_parameter/sky_top_color = Color(0.27, 0.64, 1, 1)
+shader_parameter/sky_bottom_color = Color(0.79, 0.92, 1, 1)
+shader_parameter/cloud_color = Color(1, 1, 1, 1)
+shader_parameter/cloud_scale = 4.5
+shader_parameter/cloud_speed = 0.03
+shader_parameter/cloud_density = 0.58
+shader_parameter/cloud_softness = 0.12
 
 [node name="main" type="Node2D" unique_id=1303828959]
 script = ExtResource("3_pk63f")
 
-[node name="Sky" type="ColorRect" parent="."]
+[node name="Sky" type="ColorRect" parent="." unique_id=2088081108]
 z_index = -100
 material = SubResource("ShaderMaterial_tbo0n")
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 
 [node name="player" parent="." unique_id=2091666533 instance=ExtResource("1_o5qli")]
 position = Vector2(187, 165)
+scale = Vector2(1.5, 1.5)
