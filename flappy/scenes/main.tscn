@@ -29,5 +29,5 @@ mouse_filter = 2
 position = Vector2(187, 165)
 scale = Vector2(1.5, 1.5)
 rise_speed = 300.0
-fall_speed = 300.0
-reset_offset = 50.0
+fall_speed = 420.0
+reset_offset = 80.0
