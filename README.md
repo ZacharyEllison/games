@@ -6,11 +6,3 @@ Relying on the [20 Games Challenge](https://20_games_challenge.gitlab.io/) and [
 for both inspiration and guidance.
 
 The hope is to make them all playable on web and through this repo.
-
-## Web launcher
-
-Serve the repo root and open `/web/` to use the game picker:
-
-```bash
-python3 -m http.server
-```
