@@ -1,0 +1,18 @@
+[
+  {
+    "id": "tic_tac_toe",
+    "title": "Tic Tac Toe",
+    "description": "Classic 3x3 play with a portrait-first layout built for the browser.",
+    "url": "./tic_tac_toe/index.html",
+    "status": "Ready",
+    "accent": "#81a1c1"
+  },
+  {
+    "id": "flappy",
+    "title": "Flappy",
+    "description": "Tap or click to flap, hold altitude, and reset instantly for another run.",
+    "url": "./flappy/index.html",
+    "status": "Ready",
+    "accent": "#d08770"
+  }
+]

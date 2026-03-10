@@ -1,0 +1,149 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Content" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+
+[node name="Eyebrow" type="Label" parent="Margin/Content"]
+layout_mode = 2
+text = "WEB ARCADE"
+
+[node name="Title" type="Label" parent="Margin/Content"]
+layout_mode = 2
+text = "ZELLIS Games"
+
+[node name="Subtitle" type="Label" parent="Margin/Content"]
+layout_mode = 2
+text = "Pick a game, then launch its web build."
+autowrap_mode = 3
+
+[node name="Panels" type="VBoxContainer" parent="Margin/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+
+[node name="GamePanel" type="PanelContainer" parent="Margin/Content/Panels"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="GameMargin" type="MarginContainer" parent="Margin/Content/Panels/GamePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="GameBox" type="VBoxContainer" parent="Margin/Content/Panels/GamePanel/GameMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="GameHeader" type="Label" parent="Margin/Content/Panels/GamePanel/GameMargin/GameBox"]
+layout_mode = 2
+text = "Available Games"
+
+[node name="GameHint" type="Label" parent="Margin/Content/Panels/GamePanel/GameMargin/GameBox"]
+layout_mode = 2
+text = "Add future web exports by updating data/games.json and re-exporting this project."
+autowrap_mode = 3
+
+[node name="GameScroll" type="ScrollContainer" parent="Margin/Content/Panels/GamePanel/GameMargin/GameBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 220)
+follow_focus = true
+
+[node name="GameList" type="VBoxContainer" parent="Margin/Content/Panels/GamePanel/GameMargin/GameBox/GameScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="DetailsPanel" type="PanelContainer" parent="Margin/Content/Panels"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="DetailsMargin" type="MarginContainer" parent="Margin/Content/Panels/DetailsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="DetailsBox" type="VBoxContainer" parent="Margin/Content/Panels/DetailsPanel/DetailsMargin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="StatusLabel" type="Label" parent="Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox"]
+layout_mode = 2
+text = "READY"
+
+[node name="SelectedTitle" type="Label" parent="Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox"]
+layout_mode = 2
+text = "Select a Game"
+
+[node name="AccentBar" type="ColorRect" parent="Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 6)
+
+[node name="SelectedDescription" type="Label" parent="Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox"]
+layout_mode = 2
+text = "Choose one of the registered games to see its launch target and start playing."
+autowrap_mode = 3
+
+[node name="HintPanel" type="PanelContainer" parent="Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HintMargin" type="MarginContainer" parent="Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox/HintPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="TargetLabel" type="Label" parent="Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox/HintPanel/HintMargin"]
+layout_mode = 2
+text = "Launch target:"
+autowrap_mode = 3
+
+[node name="PlayButton" type="Button" parent="Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 58)
+text = "Play"
