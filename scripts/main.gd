@@ -11,14 +11,22 @@ const MUTED_TEXT := Color("d8dee9")
 const DEFAULT_ACCENT := Color("88c0d0")
 
 @onready var background: ColorRect = $Background
+@onready var margin_container: MarginContainer = $Margin
+@onready var content_box: VBoxContainer = $Margin/Content
 @onready var eyebrow_label: Label = $Margin/Content/Eyebrow
 @onready var title_label: Label = $Margin/Content/Title
 @onready var subtitle_label: Label = $Margin/Content/Subtitle
+@onready var panels_box: VBoxContainer = $Margin/Content/Panels
 @onready var game_panel: PanelContainer = $Margin/Content/Panels/GamePanel
+@onready var game_margin: MarginContainer = $Margin/Content/Panels/GamePanel/GameMargin
+@onready var game_box: VBoxContainer = $Margin/Content/Panels/GamePanel/GameMargin/GameBox
 @onready var game_header_label: Label = $Margin/Content/Panels/GamePanel/GameMargin/GameBox/GameHeader
 @onready var game_hint_label: Label = $Margin/Content/Panels/GamePanel/GameMargin/GameBox/GameHint
+@onready var game_scroll: ScrollContainer = $Margin/Content/Panels/GamePanel/GameMargin/GameBox/GameScroll
 @onready var game_list: VBoxContainer = $Margin/Content/Panels/GamePanel/GameMargin/GameBox/GameScroll/GameList
 @onready var details_panel: PanelContainer = $Margin/Content/Panels/DetailsPanel
+@onready var details_margin: MarginContainer = $Margin/Content/Panels/DetailsPanel/DetailsMargin
+@onready var details_box: VBoxContainer = $Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox
 @onready var status_label: Label = $Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox/StatusLabel
 @onready var selected_title_label: Label = $Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox/SelectedTitle
 @onready var accent_bar: ColorRect = $Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox/AccentBar
@@ -34,9 +42,11 @@ var selected_game_index := -1
 
 func _ready() -> void:
 	_apply_theme()
+	get_viewport().size_changed.connect(_apply_responsive_layout)
 	play_button.pressed.connect(_on_play_pressed)
 	games = _load_games()
 	_populate_games()
+	_apply_responsive_layout()
 
 func _apply_theme() -> void:
 	background.color = BACKGROUND_COLOR
@@ -92,6 +102,7 @@ func _populate_games() -> void:
 		play_button.text = "Nothing to play"
 		play_button.disabled = true
 		accent_bar.color = PANEL_BORDER
+		_apply_responsive_layout()
 		return
 
 	for index in range(games.size()):
@@ -110,6 +121,7 @@ func _populate_games() -> void:
 		game_buttons.append(button)
 
 	_select_game(0)
+	_apply_responsive_layout()
 
 func _on_game_selected(index: int) -> void:
 	_select_game(index)
@@ -153,6 +165,64 @@ func _on_play_pressed() -> void:
 func _set_label_style(label: Label, font_size: int, color: Color) -> void:
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
+
+func _apply_responsive_layout() -> void:
+	var viewport_size := get_viewport_rect().size
+	var width := viewport_size.x
+	var height := viewport_size.y
+	var is_phone := width <= 540.0
+	var is_small := width <= 820.0
+
+	var outer_margin := 14 if is_phone else (18 if is_small else 24)
+	var inner_margin := 14 if is_phone else (16 if is_small else 20)
+	var section_spacing := 12 if is_phone else (14 if is_small else 18)
+	var title_size := 28 if is_phone else (34 if is_small else 42)
+	var heading_size := 20 if is_phone else (22 if is_small else 24)
+	var body_size := 15 if is_phone else 16
+	var helper_size := 13 if is_phone else 14
+	var status_size := 12 if is_phone else 13
+	var button_font_size := 15 if is_phone else 16
+	var button_height := 50.0 if is_phone else 54.0
+	var play_height := 52.0 if is_phone else 58.0
+	var game_list_height := clampf(height * (0.26 if is_phone else 0.3), 160.0, 260.0)
+
+	margin_container.add_theme_constant_override("margin_left", outer_margin)
+	margin_container.add_theme_constant_override("margin_top", outer_margin)
+	margin_container.add_theme_constant_override("margin_right", outer_margin)
+	margin_container.add_theme_constant_override("margin_bottom", outer_margin)
+
+	content_box.add_theme_constant_override("separation", section_spacing)
+	panels_box.add_theme_constant_override("separation", section_spacing)
+	game_box.add_theme_constant_override("separation", 8 if is_phone else 10)
+	details_box.add_theme_constant_override("separation", 10 if is_phone else 14)
+
+	game_margin.add_theme_constant_override("margin_left", inner_margin)
+	game_margin.add_theme_constant_override("margin_top", inner_margin)
+	game_margin.add_theme_constant_override("margin_right", inner_margin)
+	game_margin.add_theme_constant_override("margin_bottom", inner_margin)
+	details_margin.add_theme_constant_override("margin_left", inner_margin)
+	details_margin.add_theme_constant_override("margin_top", inner_margin)
+	details_margin.add_theme_constant_override("margin_right", inner_margin)
+	details_margin.add_theme_constant_override("margin_bottom", inner_margin)
+
+	game_scroll.custom_minimum_size = Vector2(0.0, game_list_height)
+	play_button.custom_minimum_size = Vector2(0.0, play_height)
+
+	_set_label_style(eyebrow_label, helper_size, DEFAULT_ACCENT)
+	_set_label_style(title_label, title_size, TEXT_COLOR)
+	_set_label_style(subtitle_label, body_size, MUTED_TEXT)
+	_set_label_style(game_header_label, heading_size, TEXT_COLOR)
+	_set_label_style(game_hint_label, helper_size, MUTED_TEXT)
+	_set_label_style(status_label, status_size, status_label.get_theme_color("font_color", "Label"))
+	_set_label_style(selected_title_label, heading_size + (6 if is_phone else 8), TEXT_COLOR)
+	_set_label_style(description_label, body_size, MUTED_TEXT)
+	_set_label_style(target_label, helper_size, MUTED_TEXT)
+
+	for button in game_buttons:
+		button.add_theme_font_size_override("font_size", button_font_size)
+		button.custom_minimum_size = Vector2(0.0, button_height)
+
+	play_button.add_theme_font_size_override("font_size", 17 if is_phone else 18)
 
 func _apply_panel_style(panel: PanelContainer, color: Color) -> void:
 	var style := StyleBoxFlat.new()
