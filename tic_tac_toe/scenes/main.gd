@@ -3,14 +3,14 @@ extends Control
 const BOARD_WIDTH := 3
 const EMPTY_CELL := ""
 const WIN_LINES := [
-	PackedInt32Array([0, 1, 2]),
-	PackedInt32Array([3, 4, 5]),
-	PackedInt32Array([6, 7, 8]),
-	PackedInt32Array([0, 3, 6]),
-	PackedInt32Array([1, 4, 7]),
-	PackedInt32Array([2, 5, 8]),
-	PackedInt32Array([0, 4, 8]),
-	PackedInt32Array([2, 4, 6]),
+	[0, 1, 2],
+	[3, 4, 5],
+	[6, 7, 8],
+	[0, 3, 6],
+	[1, 4, 7],
+	[2, 5, 8],
+	[0, 4, 8],
+	[2, 4, 6],
 ]
 
 const BACKGROUND_COLOR := Color8(28, 31, 43)
