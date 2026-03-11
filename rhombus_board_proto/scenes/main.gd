@@ -78,18 +78,15 @@ func _process(delta: float) -> void:
 
 func _build_data() -> void:
 	tile_defs = [
-		{"id": "sunburst", "name": "Sunburst", "code": "SB", "accent": Color("c9923d")},
-		{"id": "starwheel", "name": "Starwheel", "code": "SW", "accent": Color("b97a45")},
-		{"id": "petal", "name": "Petal", "code": "PT", "accent": Color("b65f4e")},
-		{"id": "lotus", "name": "Lotus", "code": "LT", "accent": Color("a96d58")},
-		{"id": "harp", "name": "Harp", "code": "HP", "accent": Color("8d7a4e")},
-		{"id": "crest", "name": "Crest", "code": "CR", "accent": Color("7f8a5f")},
-		{"id": "ring", "name": "Ring", "code": "RG", "accent": Color("9b6b4f")},
-		{"id": "wheel", "name": "Wheel", "code": "WH", "accent": Color("8c6b39")},
-		{"id": "grain", "name": "Grain", "code": "GN", "accent": Color("b7a06a")},
-		{"id": "sail", "name": "Sail", "code": "SL", "accent": Color("8d7867")},
-		{"id": "rosette", "name": "Rosette", "code": "RS", "accent": Color("a85c48")},
-		{"id": "eclipse", "name": "Eclipse", "code": "EC", "accent": Color("7d6857")},
+		{"id": "lotus", "name": "Lotus", "code": "LT", "accent": Color("b46f58")},
+		{"id": "bell_flower", "name": "Bell Flower", "code": "BF", "accent": Color("9c7666")},
+		{"id": "lily", "name": "Lily", "code": "LY", "accent": Color("b79b7d")},
+		{"id": "temple", "name": "Temple", "code": "TP", "accent": Color("8c694f")},
+		{"id": "coin", "name": "Metal Coin", "code": "MC", "accent": Color("b28743")},
+		{"id": "road", "name": "Road", "code": "RD", "accent": Color("7c6d62")},
+		{"id": "sun", "name": "Sun", "code": "SN", "accent": Color("c98b33")},
+		{"id": "dhamma_wheel", "name": "Dhamma Wheel", "code": "DW", "accent": Color("9a5f2f")},
+		{"id": "moon", "name": "Moon", "code": "MN", "accent": Color("6e6a74")},
 	]
 
 	for index in range(tile_defs.size()):
