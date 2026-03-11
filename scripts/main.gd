@@ -2,13 +2,17 @@ extends Control
 
 const GAMES_FILE := "res://data/games.json"
 
-const BACKGROUND_COLOR := Color("2e3440")
-const PANEL_COLOR := Color("3b4252")
-const PANEL_ALT_COLOR := Color("434c5e")
-const PANEL_BORDER := Color("4c566a")
-const TEXT_COLOR := Color("eceff4")
-const MUTED_TEXT := Color("d8dee9")
-const DEFAULT_ACCENT := Color("88c0d0")
+const BACKGROUND_COLOR := Color("eceff4")
+const PANEL_COLOR := Color("e5e9f0")
+const PANEL_ALT_COLOR := Color("dde4ee")
+const PANEL_BORDER := Color("c8d2df")
+const TEXT_COLOR := Color("2e3440")
+const MUTED_TEXT := Color("4c566a")
+const SURFACE_COLOR := Color("f7f9fc")
+const LIST_BUTTON_COLOR := Color("edf2f7")
+const LIST_BUTTON_HOVER_COLOR := Color("e3eaf3")
+const LIST_BUTTON_ACTIVE_COLOR := Color("d7e4f2")
+const DEFAULT_ACCENT := Color("81a1c1")
 
 @onready var background: ColorRect = $Background
 @onready var margin_container: MarginContainer = $Margin
@@ -65,7 +69,7 @@ func _apply_theme() -> void:
 
 	_apply_panel_style(game_panel, PANEL_COLOR)
 	_apply_panel_style(details_panel, PANEL_ALT_COLOR)
-	_apply_panel_style(hint_panel, Color("2e3440"))
+	_apply_panel_style(hint_panel, SURFACE_COLOR)
 	_apply_action_button_style(play_button, DEFAULT_ACCENT)
 
 func _load_games() -> Array[Dictionary]:
@@ -198,21 +202,21 @@ func _apply_responsive_layout() -> void:
 	var is_portrait_phone := _is_portrait_phone_layout(viewport_size)
 	var is_small := width <= 820.0
 
-	var outer_margin := 10 if is_portrait_phone else (14 if is_phone else (18 if is_small else 24))
+	var outer_margin := 8 if is_portrait_phone else (14 if is_phone else (18 if is_small else 24))
 	var inner_margin := 12 if is_portrait_phone else (14 if is_phone else (16 if is_small else 20))
 	var hint_margin_size := 10 if is_portrait_phone else (12 if is_phone else 14)
-	var section_spacing := 10 if is_portrait_phone else (12 if is_phone else (14 if is_small else 18))
-	var title_size := 34 if is_portrait_phone else (30 if is_phone else (34 if is_small else 42))
-	var heading_size := 22 if is_portrait_phone else (20 if is_phone else (22 if is_small else 24))
-	var body_size := 17 if is_portrait_phone else (16 if is_phone else 16)
-	var helper_size := 14 if is_phone else 14
+	var section_spacing := 8 if is_portrait_phone else (12 if is_phone else (14 if is_small else 18))
+	var title_size := 38 if is_portrait_phone else (30 if is_phone else (34 if is_small else 42))
+	var heading_size := 24 if is_portrait_phone else (20 if is_phone else (22 if is_small else 24))
+	var body_size := 18 if is_portrait_phone else (16 if is_phone else 16)
+	var helper_size := 15 if is_portrait_phone else (14 if is_phone else 14)
 	var status_size := 13 if is_phone else 13
-	var button_font_size := 17 if is_portrait_phone else (16 if is_phone else 16)
-	var button_height := 58.0 if is_portrait_phone else (54.0 if is_phone else 54.0)
+	var button_font_size := 18 if is_portrait_phone else (16 if is_phone else 16)
+	var button_height := 56.0 if is_portrait_phone else (54.0 if is_phone else 54.0)
 	var play_height := 60.0 if is_portrait_phone else (54.0 if is_phone else 58.0)
-	var game_list_height := clampf(height * (0.18 if is_portrait_phone else (0.24 if is_phone else 0.3)), 136.0, 260.0)
-	var details_ratio := 1.2 if is_portrait_phone else (1.08 if is_phone else 1.0)
-	var game_ratio := 0.8 if is_portrait_phone else (0.92 if is_phone else 1.0)
+	var game_list_height := clampf(height * (0.14 if is_portrait_phone else (0.24 if is_phone else 0.3)), 112.0, 260.0)
+	var game_panel_flags := Control.SIZE_FILL if is_portrait_phone else Control.SIZE_EXPAND_FILL
+	var game_scroll_flags := Control.SIZE_FILL if is_portrait_phone else Control.SIZE_EXPAND_FILL
 
 	margin_container.add_theme_constant_override("margin_left", outer_margin)
 	margin_container.add_theme_constant_override("margin_top", outer_margin)
@@ -238,10 +242,11 @@ func _apply_responsive_layout() -> void:
 	hint_margin.add_theme_constant_override("margin_bottom", hint_margin_size)
 
 	game_scroll.custom_minimum_size = Vector2(0.0, game_list_height)
+	game_scroll.size_flags_vertical = game_scroll_flags
 	play_button.custom_minimum_size = Vector2(0.0, play_height)
 	accent_bar.custom_minimum_size = Vector2(0.0, 5.0 if is_portrait_phone else 6.0)
-	game_panel.size_flags_stretch_ratio = game_ratio
-	details_panel.size_flags_stretch_ratio = details_ratio
+	game_panel.size_flags_vertical = game_panel_flags
+	details_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 	_set_label_style(eyebrow_label, helper_size, DEFAULT_ACCENT)
 	_set_label_style(title_label, title_size, TEXT_COLOR)
@@ -281,24 +286,25 @@ func _apply_list_button_style(button: Button) -> void:
 	button.add_theme_color_override("font_pressed_color", TEXT_COLOR)
 	button.add_theme_color_override("font_focus_color", TEXT_COLOR)
 
-	button.add_theme_stylebox_override("normal", _button_style(Color("434c5e"), PANEL_BORDER))
-	button.add_theme_stylebox_override("hover", _button_style(Color("4c566a"), Color("81a1c1")))
-	button.add_theme_stylebox_override("pressed", _button_style(Color("4c566a"), DEFAULT_ACCENT))
-	button.add_theme_stylebox_override("focus", _button_style(Color("4c566a"), DEFAULT_ACCENT))
-	button.add_theme_stylebox_override("disabled", _button_style(Color("3b4252"), PANEL_BORDER))
+	button.add_theme_stylebox_override("normal", _button_style(LIST_BUTTON_COLOR, PANEL_BORDER))
+	button.add_theme_stylebox_override("hover", _button_style(LIST_BUTTON_HOVER_COLOR, DEFAULT_ACCENT))
+	button.add_theme_stylebox_override("pressed", _button_style(LIST_BUTTON_ACTIVE_COLOR, DEFAULT_ACCENT))
+	button.add_theme_stylebox_override("focus", _button_style(LIST_BUTTON_ACTIVE_COLOR, DEFAULT_ACCENT))
+	button.add_theme_stylebox_override("disabled", _button_style(PANEL_COLOR, PANEL_BORDER))
 
 func _apply_action_button_style(button: Button, accent: Color) -> void:
 	button.add_theme_font_size_override("font_size", 18)
-	button.add_theme_color_override("font_color", Color("2e3440"))
-	button.add_theme_color_override("font_hover_color", Color("2e3440"))
-	button.add_theme_color_override("font_pressed_color", Color("2e3440"))
-	button.add_theme_color_override("font_focus_color", Color("2e3440"))
+	button.add_theme_color_override("font_color", TEXT_COLOR)
+	button.add_theme_color_override("font_hover_color", TEXT_COLOR)
+	button.add_theme_color_override("font_pressed_color", TEXT_COLOR)
+	button.add_theme_color_override("font_focus_color", TEXT_COLOR)
 
-	button.add_theme_stylebox_override("normal", _button_style(accent, accent.darkened(0.12), 26))
-	button.add_theme_stylebox_override("hover", _button_style(accent.lightened(0.08), accent.darkened(0.05), 26))
-	button.add_theme_stylebox_override("pressed", _button_style(accent.darkened(0.08), accent.darkened(0.16), 26))
-	button.add_theme_stylebox_override("focus", _button_style(accent.lightened(0.08), accent.darkened(0.05), 26))
-	button.add_theme_stylebox_override("disabled", _button_style(Color("4c566a"), PANEL_BORDER, 26))
+	var base_fill := accent.lightened(0.22)
+	button.add_theme_stylebox_override("normal", _button_style(base_fill, accent, 26))
+	button.add_theme_stylebox_override("hover", _button_style(base_fill.lightened(0.08), accent.darkened(0.05), 26))
+	button.add_theme_stylebox_override("pressed", _button_style(accent.lightened(0.12), accent.darkened(0.08), 26))
+	button.add_theme_stylebox_override("focus", _button_style(base_fill.lightened(0.08), accent.darkened(0.05), 26))
+	button.add_theme_stylebox_override("disabled", _button_style(PANEL_ALT_COLOR, PANEL_BORDER, 26))
 
 func _button_style(fill: Color, border: Color, radius: int = 20) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()

@@ -142,6 +142,11 @@ layout_mode = 2
 text = "Launch target:"
 autowrap_mode = 3
 
+[node name="FlexSpacer" type="Control" parent="Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
 [node name="PlayButton" type="Button" parent="Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox"]
 layout_mode = 2
 size_flags_horizontal = 3

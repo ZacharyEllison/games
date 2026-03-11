@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="52" fill="#F7F0E4"/>
+  <g transform="translate(128 128) rotate(45)">
+    <rect x="-60" y="-60" width="120" height="120" rx="18" fill="#E6D6C0" stroke="#9D7458" stroke-width="6"/>
+    <circle r="63.25" fill="none" stroke="#9F8B5B" stroke-width="4.5"/>
+
+    <line x1="-20" y1="-60" x2="-20" y2="60" stroke="#8D6245" stroke-width="5" stroke-linecap="round"/>
+    <line x1="20" y1="-60" x2="20" y2="60" stroke="#8D6245" stroke-width="5" stroke-linecap="round"/>
+    <line x1="-60" y1="-20" x2="60" y2="-20" stroke="#8D6245" stroke-width="5" stroke-linecap="round"/>
+    <line x1="-60" y1="20" x2="60" y2="20" stroke="#8D6245" stroke-width="5" stroke-linecap="round"/>
+
+    <g fill="#F8EFE1" stroke="#9D7A5B" stroke-width="4">
+      <circle cx="-20" cy="-60" r="11"/>
+      <circle cx="20" cy="-60" r="11"/>
+      <circle cx="60" cy="-20" r="11"/>
+      <circle cx="60" cy="20" r="11"/>
+      <circle cx="20" cy="60" r="11"/>
+      <circle cx="-20" cy="60" r="11"/>
+      <circle cx="-60" cy="20" r="11"/>
+      <circle cx="-60" cy="-20" r="11"/>
+    </g>
+
+    <g fill="#F8EFE1" stroke="#C66F3D" stroke-width="4">
+      <circle cx="-20" cy="-20" r="11"/>
+      <circle cx="20" cy="-20" r="11"/>
+      <circle cx="20" cy="20" r="11"/>
+      <circle cx="-20" cy="20" r="11"/>
+    </g>
+  </g>
+</svg>
