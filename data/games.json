@@ -14,5 +14,13 @@
     "url": "./flappy/index.html",
     "status": "Ready",
     "accent": "#d08770"
+  },
+  {
+    "id": "pai_do",
+    "title": "pai-do",
+    "description": "Prototype board sandbox with a portrait-first playfield and a slide-up tile drawer.",
+    "url": "./pai-do/index.html",
+    "status": "Prototype",
+    "accent": "#b48766"
   }
 ]

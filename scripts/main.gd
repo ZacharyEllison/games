@@ -171,6 +171,30 @@ func _set_label_style(label: Label, font_size: int, color: Color) -> void:
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 
+func _layout_viewport_size() -> Vector2:
+	var viewport_size := size
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		viewport_size = get_viewport_rect().size
+
+	if OS.has_feature("web"):
+		var js_width := JavaScriptBridge.eval("window.visualViewport ? window.visualViewport.width : window.innerWidth", true)
+		var js_height := JavaScriptBridge.eval("window.visualViewport ? window.visualViewport.height : window.innerHeight", true)
+		var width := _variant_to_float(js_width, viewport_size.x)
+		var height := _variant_to_float(js_height, viewport_size.y)
+		if width > 0.0 and height > 0.0:
+			return Vector2(width, height)
+
+	return viewport_size
+
+func _variant_to_float(value: Variant, fallback: float) -> float:
+	if value is float:
+		return value
+	if value is int:
+		return float(value)
+
+	var parsed := String(value).to_float()
+	return parsed if parsed > 0.0 else fallback
+
 func _is_portrait_phone_layout(viewport_size: Vector2) -> bool:
 	return viewport_size.x <= 600.0 and viewport_size.y > viewport_size.x * 1.15
 
@@ -195,26 +219,29 @@ func _target_label_text(target: String, compact_layout: bool) -> String:
 	return "Launch target:\n%s\n\nUse browser back to return to the arcade." % target
 
 func _apply_responsive_layout() -> void:
-	var viewport_size := get_viewport_rect().size
+	var viewport_size := _layout_viewport_size()
 	var width := viewport_size.x
 	var height := viewport_size.y
+	var short_side := minf(width, height)
 	var is_phone := width <= 600.0
 	var is_portrait_phone := _is_portrait_phone_layout(viewport_size)
 	var is_small := width <= 820.0
-
-	var outer_margin := 8 if is_portrait_phone else (14 if is_phone else (18 if is_small else 24))
-	var inner_margin := 12 if is_portrait_phone else (14 if is_phone else (16 if is_small else 20))
-	var hint_margin_size := 10 if is_portrait_phone else (12 if is_phone else 14)
-	var section_spacing := 8 if is_portrait_phone else (12 if is_phone else (14 if is_small else 18))
-	var title_size := 38 if is_portrait_phone else (30 if is_phone else (34 if is_small else 42))
-	var heading_size := 24 if is_portrait_phone else (20 if is_phone else (22 if is_small else 24))
-	var body_size := 18 if is_portrait_phone else (16 if is_phone else 16)
-	var helper_size := 15 if is_portrait_phone else (14 if is_phone else 14)
-	var status_size := 13 if is_phone else 13
-	var button_font_size := 18 if is_portrait_phone else (16 if is_phone else 16)
-	var button_height := 56.0 if is_portrait_phone else (54.0 if is_phone else 54.0)
-	var play_height := 60.0 if is_portrait_phone else (54.0 if is_phone else 58.0)
-	var game_list_height := clampf(height * (0.14 if is_portrait_phone else (0.24 if is_phone else 0.3)), 112.0, 260.0)
+	var game_count := maxi(game_buttons.size(), maxi(games.size(), 1))
+	var outer_margin := int(clampf(short_side * (0.022 if is_portrait_phone else 0.03), 8.0, 24.0))
+	var inner_margin := int(clampf(short_side * (0.03 if is_portrait_phone else 0.035), 12.0, 22.0))
+	var hint_margin_size := int(clampf(short_side * 0.026, 10.0, 18.0))
+	var section_spacing := int(clampf(short_side * (0.018 if is_portrait_phone else 0.022), 8.0, 18.0))
+	var list_spacing := int(clampf(short_side * 0.022, 8.0, 16.0))
+	var title_size := int(clampf(short_side * (0.115 if is_portrait_phone else 0.082), 30.0, 60.0))
+	var heading_size := int(clampf(short_side * (0.068 if is_portrait_phone else 0.054), 22.0, 34.0))
+	var body_size := int(clampf(short_side * (0.052 if is_portrait_phone else 0.04), 16.0, 24.0))
+	var helper_size := int(clampf(short_side * (0.04 if is_portrait_phone else 0.033), 13.0, 18.0))
+	var status_size := int(clampf(short_side * 0.034, 13.0, 18.0))
+	var button_font_size := int(clampf(short_side * (0.05 if is_portrait_phone else 0.04), 16.0, 24.0))
+	var button_height := clampf(height * (0.066 if is_portrait_phone else (0.058 if is_phone else 0.05)), 52.0, 76.0)
+	var play_height := clampf(height * (0.072 if is_portrait_phone else (0.064 if is_phone else 0.056)), 56.0, 82.0)
+	var game_list_content_height := game_count * button_height + maxi(game_count - 1, 0) * float(list_spacing)
+	var game_list_height := clampf(game_list_content_height, button_height, height * (0.24 if is_portrait_phone else (0.32 if is_phone else 0.36)))
 	var game_panel_flags := Control.SIZE_FILL if is_portrait_phone else Control.SIZE_EXPAND_FILL
 	var game_scroll_flags := Control.SIZE_FILL if is_portrait_phone else Control.SIZE_EXPAND_FILL
 
@@ -225,8 +252,9 @@ func _apply_responsive_layout() -> void:
 
 	content_box.add_theme_constant_override("separation", section_spacing)
 	panels_box.add_theme_constant_override("separation", section_spacing)
-	game_box.add_theme_constant_override("separation", 8 if is_phone else 10)
-	details_box.add_theme_constant_override("separation", 10 if is_phone else 14)
+	game_box.add_theme_constant_override("separation", list_spacing)
+	game_list.add_theme_constant_override("separation", list_spacing)
+	details_box.add_theme_constant_override("separation", int(clampf(short_side * 0.024, 10.0, 18.0)))
 
 	game_margin.add_theme_constant_override("margin_left", inner_margin)
 	game_margin.add_theme_constant_override("margin_top", inner_margin)
@@ -254,7 +282,7 @@ func _apply_responsive_layout() -> void:
 	_set_label_style(game_header_label, heading_size, TEXT_COLOR)
 	_set_label_style(game_hint_label, helper_size, MUTED_TEXT)
 	_set_label_style(status_label, status_size, status_label.get_theme_color("font_color", "Label"))
-	_set_label_style(selected_title_label, heading_size + (6 if is_phone else 8), TEXT_COLOR)
+	_set_label_style(selected_title_label, int(clampf(title_size * 0.78, 28.0, 46.0)), TEXT_COLOR)
 	_set_label_style(description_label, body_size, MUTED_TEXT)
 	_set_label_style(target_label, helper_size, MUTED_TEXT)
 	_refresh_copy()
@@ -263,7 +291,7 @@ func _apply_responsive_layout() -> void:
 		button.add_theme_font_size_override("font_size", button_font_size)
 		button.custom_minimum_size = Vector2(0.0, button_height)
 
-	play_button.add_theme_font_size_override("font_size", 18 if is_portrait_phone else (17 if is_phone else 18))
+	play_button.add_theme_font_size_override("font_size", int(clampf(button_font_size + 1, 18.0, 26.0)))
 
 func _apply_panel_style(panel: PanelContainer, color: Color) -> void:
 	var style := StyleBoxFlat.new()
