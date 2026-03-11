@@ -32,6 +32,7 @@ const DEFAULT_ACCENT := Color("88c0d0")
 @onready var accent_bar: ColorRect = $Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox/AccentBar
 @onready var description_label: Label = $Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox/SelectedDescription
 @onready var hint_panel: PanelContainer = $Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox/HintPanel
+@onready var hint_margin: MarginContainer = $Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox/HintPanel/HintMargin
 @onready var target_label: Label = $Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox/HintPanel/HintMargin/TargetLabel
 @onready var play_button: Button = $Margin/Content/Panels/DetailsPanel/DetailsMargin/DetailsBox/PlayButton
 
@@ -98,10 +99,10 @@ func _populate_games() -> void:
 		status_label.text = "EMPTY"
 		selected_title_label.text = "No game selected"
 		description_label.text = "The launcher has no registered web exports yet."
-		target_label.text = "Launch target:\ndata/games.json"
 		play_button.text = "Nothing to play"
 		play_button.disabled = true
 		accent_bar.color = PANEL_BORDER
+		_refresh_copy()
 		_apply_responsive_layout()
 		return
 
@@ -141,11 +142,11 @@ func _select_game(index: int) -> void:
 	status_label.add_theme_color_override("font_color", accent)
 	selected_title_label.text = String(game.get("title", "Untitled Game"))
 	description_label.text = String(game.get("description", ""))
-	target_label.text = "Launch target:\n%s\n\nUse browser back to return to the arcade." % String(game.get("url", ""))
 	accent_bar.color = accent
 	play_button.text = "Play %s" % String(game.get("title", "Game"))
 	play_button.disabled = false
 	_apply_action_button_style(play_button, accent)
+	_refresh_copy()
 
 func _on_play_pressed() -> void:
 	if selected_game_index < 0 or selected_game_index >= games.size():
@@ -166,25 +167,52 @@ func _set_label_style(label: Label, font_size: int, color: Color) -> void:
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 
+func _is_portrait_phone_layout(viewport_size: Vector2) -> bool:
+	return viewport_size.x <= 600.0 and viewport_size.y > viewport_size.x * 1.15
+
+func _refresh_copy() -> void:
+	var compact_layout := _is_portrait_phone_layout(get_viewport_rect().size)
+	subtitle_label.text = "Pick a game and launch it." if compact_layout else "Pick a game, then launch its web build."
+	game_hint_label.text = "Choose a game to launch." if compact_layout else "Add future web exports by updating data/games.json and re-exporting this project."
+
+	if games.is_empty():
+		target_label.text = "Launch target:\ndata/games.json"
+		return
+
+	if selected_game_index >= 0 and selected_game_index < games.size():
+		target_label.text = _target_label_text(String(games[selected_game_index].get("url", "")), compact_layout)
+		return
+
+	target_label.text = "Launch target:"
+
+func _target_label_text(target: String, compact_layout: bool) -> String:
+	if compact_layout:
+		return "Launch target:\n%s\n\nUse browser back to return." % target
+	return "Launch target:\n%s\n\nUse browser back to return to the arcade." % target
+
 func _apply_responsive_layout() -> void:
 	var viewport_size := get_viewport_rect().size
 	var width := viewport_size.x
 	var height := viewport_size.y
-	var is_phone := width <= 540.0
+	var is_phone := width <= 600.0
+	var is_portrait_phone := _is_portrait_phone_layout(viewport_size)
 	var is_small := width <= 820.0
 
-	var outer_margin := 14 if is_phone else (18 if is_small else 24)
-	var inner_margin := 14 if is_phone else (16 if is_small else 20)
-	var section_spacing := 12 if is_phone else (14 if is_small else 18)
-	var title_size := 28 if is_phone else (34 if is_small else 42)
-	var heading_size := 20 if is_phone else (22 if is_small else 24)
-	var body_size := 15 if is_phone else 16
-	var helper_size := 13 if is_phone else 14
-	var status_size := 12 if is_phone else 13
-	var button_font_size := 15 if is_phone else 16
-	var button_height := 50.0 if is_phone else 54.0
-	var play_height := 52.0 if is_phone else 58.0
-	var game_list_height := clampf(height * (0.26 if is_phone else 0.3), 160.0, 260.0)
+	var outer_margin := 10 if is_portrait_phone else (14 if is_phone else (18 if is_small else 24))
+	var inner_margin := 12 if is_portrait_phone else (14 if is_phone else (16 if is_small else 20))
+	var hint_margin_size := 10 if is_portrait_phone else (12 if is_phone else 14)
+	var section_spacing := 10 if is_portrait_phone else (12 if is_phone else (14 if is_small else 18))
+	var title_size := 34 if is_portrait_phone else (30 if is_phone else (34 if is_small else 42))
+	var heading_size := 22 if is_portrait_phone else (20 if is_phone else (22 if is_small else 24))
+	var body_size := 17 if is_portrait_phone else (16 if is_phone else 16)
+	var helper_size := 14 if is_phone else 14
+	var status_size := 13 if is_phone else 13
+	var button_font_size := 17 if is_portrait_phone else (16 if is_phone else 16)
+	var button_height := 58.0 if is_portrait_phone else (54.0 if is_phone else 54.0)
+	var play_height := 60.0 if is_portrait_phone else (54.0 if is_phone else 58.0)
+	var game_list_height := clampf(height * (0.18 if is_portrait_phone else (0.24 if is_phone else 0.3)), 136.0, 260.0)
+	var details_ratio := 1.2 if is_portrait_phone else (1.08 if is_phone else 1.0)
+	var game_ratio := 0.8 if is_portrait_phone else (0.92 if is_phone else 1.0)
 
 	margin_container.add_theme_constant_override("margin_left", outer_margin)
 	margin_container.add_theme_constant_override("margin_top", outer_margin)
@@ -204,9 +232,16 @@ func _apply_responsive_layout() -> void:
 	details_margin.add_theme_constant_override("margin_top", inner_margin)
 	details_margin.add_theme_constant_override("margin_right", inner_margin)
 	details_margin.add_theme_constant_override("margin_bottom", inner_margin)
+	hint_margin.add_theme_constant_override("margin_left", hint_margin_size)
+	hint_margin.add_theme_constant_override("margin_top", hint_margin_size)
+	hint_margin.add_theme_constant_override("margin_right", hint_margin_size)
+	hint_margin.add_theme_constant_override("margin_bottom", hint_margin_size)
 
 	game_scroll.custom_minimum_size = Vector2(0.0, game_list_height)
 	play_button.custom_minimum_size = Vector2(0.0, play_height)
+	accent_bar.custom_minimum_size = Vector2(0.0, 5.0 if is_portrait_phone else 6.0)
+	game_panel.size_flags_stretch_ratio = game_ratio
+	details_panel.size_flags_stretch_ratio = details_ratio
 
 	_set_label_style(eyebrow_label, helper_size, DEFAULT_ACCENT)
 	_set_label_style(title_label, title_size, TEXT_COLOR)
@@ -217,12 +252,13 @@ func _apply_responsive_layout() -> void:
 	_set_label_style(selected_title_label, heading_size + (6 if is_phone else 8), TEXT_COLOR)
 	_set_label_style(description_label, body_size, MUTED_TEXT)
 	_set_label_style(target_label, helper_size, MUTED_TEXT)
+	_refresh_copy()
 
 	for button in game_buttons:
 		button.add_theme_font_size_override("font_size", button_font_size)
 		button.custom_minimum_size = Vector2(0.0, button_height)
 
-	play_button.add_theme_font_size_override("font_size", 17 if is_phone else 18)
+	play_button.add_theme_font_size_override("font_size", 18 if is_portrait_phone else (17 if is_phone else 18))
 
 func _apply_panel_style(panel: PanelContainer, color: Color) -> void:
 	var style := StyleBoxFlat.new()
