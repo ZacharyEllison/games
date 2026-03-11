@@ -291,13 +291,13 @@ func _layout_board() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
 
-	board_span = minf(size.x * 0.9, size.y * 0.9)
+	board_span = minf(size.x * 0.94, size.y * 0.96)
 	var square_side := board_span / sqrt(2.0)
 	var square_half_side := square_side * 0.5
 	var edge_offset := square_half_side * EDGE_THIRD
 	board_circle_radius = sqrt(square_half_side * square_half_side + edge_offset * edge_offset)
-	board_center = size * 0.5 + Vector2(0.0, minf(10.0, size.y * 0.02))
-	slot_button_size = clampf(square_side * 0.2, 56.0, 78.0)
+	board_center = size * 0.5
+	slot_button_size = clampf(square_side * 0.21, 58.0, 82.0)
 
 	board_plate.size = Vector2(square_side, square_side)
 	board_plate.position = board_center - board_plate.size * 0.5
