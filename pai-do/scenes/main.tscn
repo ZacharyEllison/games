@@ -516,23 +516,23 @@ offset_bottom = -16.0
 glyph_id = "lily"
 ink_color = Color(0.20094116, 0.17019607, 0.1372549, 1)
 
-[node name="TempleButton" type="Button" parent="DrawerSheet/DrawerPadding/DrawerContent/TileScroll/TileRow" unique_id=1963853205]
+[node name="BeetleButton" type="Button" parent="DrawerSheet/DrawerPadding/DrawerContent/TileScroll/TileRow" unique_id=1963853205]
 custom_minimum_size = Vector2(104, 104)
 layout_mode = 2
-tooltip_text = "Temple"
+tooltip_text = "Beetle"
 focus_mode = 0
 mouse_default_cursor_shape = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_trceg")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_a8y0u")
 theme_override_styles/hover = SubResource("StyleBoxFlat_jkv2x")
 
-[node name="TempleToken" parent="DrawerSheet/DrawerPadding/DrawerContent/TileScroll/TileRow/TempleButton" unique_id=336571676 instance=ExtResource("3_token_glyph")]
+[node name="BeetleToken" parent="DrawerSheet/DrawerPadding/DrawerContent/TileScroll/TileRow/BeetleButton" unique_id=336571676 instance=ExtResource("3_token_glyph")]
 layout_mode = 1
 offset_left = 16.0
 offset_top = 16.0
 offset_right = -16.0
 offset_bottom = -16.0
-glyph_id = "temple"
+glyph_id = "beetle"
 ink_color = Color(0.15372548, 0.11529411, 0.08674509, 1)
 
 [node name="CoinButton" type="Button" parent="DrawerSheet/DrawerPadding/DrawerContent/TileScroll/TileRow" unique_id=1066797789]
@@ -592,23 +592,23 @@ offset_bottom = -16.0
 glyph_id = "sun"
 ink_color = Color(0.22070587, 0.15262744, 0.055999994, 1)
 
-[node name="DhammaWheelButton" type="Button" parent="DrawerSheet/DrawerPadding/DrawerContent/TileScroll/TileRow" unique_id=1572600548]
+[node name="DharmaButton" type="Button" parent="DrawerSheet/DrawerPadding/DrawerContent/TileScroll/TileRow" unique_id=1572600548]
 custom_minimum_size = Vector2(104, 104)
 layout_mode = 2
-tooltip_text = "Dhamma Wheel"
+tooltip_text = "Dharma"
 focus_mode = 0
 mouse_default_cursor_shape = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_og1vs")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_2wyq8")
 theme_override_styles/hover = SubResource("StyleBoxFlat_vxglm")
 
-[node name="DhammaWheelToken" parent="DrawerSheet/DrawerPadding/DrawerContent/TileScroll/TileRow/DhammaWheelButton" unique_id=1396175240 instance=ExtResource("3_token_glyph")]
+[node name="DharmaToken" parent="DrawerSheet/DrawerPadding/DrawerContent/TileScroll/TileRow/DharmaButton" unique_id=1396175240 instance=ExtResource("3_token_glyph")]
 layout_mode = 1
 offset_left = 16.0
 offset_top = 16.0
 offset_right = -16.0
 offset_bottom = -16.0
-glyph_id = "dhamma_wheel"
+glyph_id = "dharma"
 ink_color = Color(0.16909803, 0.10431372, 0.05160784, 1)
 
 [node name="MoonButton" type="Button" parent="DrawerSheet/DrawerPadding/DrawerContent/TileScroll/TileRow" unique_id=1621290257]

@@ -82,11 +82,11 @@ func _build_data() -> void:
 		{"id": "lotus", "name": "Lotus", "code": "LT", "accent": Color("b46f58")},
 		{"id": "bell_flower", "name": "Bell Flower", "code": "BF", "accent": Color("9c7666")},
 		{"id": "lily", "name": "Lily", "code": "LY", "accent": Color("b79b7d")},
-		{"id": "temple", "name": "Temple", "code": "TP", "accent": Color("8c694f")},
+		{"id": "beetle", "name": "Beetle", "code": "BT", "accent": Color("8c694f")},
 		{"id": "coin", "name": "Metal Coin", "code": "MC", "accent": Color("b28743")},
 		{"id": "road", "name": "Road", "code": "RD", "accent": Color("7c6d62")},
 		{"id": "sun", "name": "Sun", "code": "SN", "accent": Color("c98b33")},
-		{"id": "dhamma_wheel", "name": "Dhamma Wheel", "code": "DW", "accent": Color("9a5f2f")},
+		{"id": "dharma", "name": "Dharma", "code": "DH", "accent": Color("9a5f2f")},
 		{"id": "moon", "name": "Moon", "code": "MN", "accent": Color("6e6a74")},
 	]
 

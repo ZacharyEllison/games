@@ -4,6 +4,7 @@ extends Control
 
 const CANON_FLOWER := preload("res://scenes/assets/extracted_tiles/canon_flower.svg")
 const CANON_WHEEL := preload("res://scenes/assets/extracted_tiles/canon_wheel.svg")
+const CANON_ROAD := preload("res://scenes/assets/extracted_tiles/canon_road.svg")
 const CANON_BELL := preload("res://scenes/assets/extracted_tiles/canon_bell.svg")
 const CANON_BLOSSOM := preload("res://scenes/assets/extracted_tiles/canon_blossom.svg")
 const CANON_LEAF := preload("res://scenes/assets/extracted_tiles/canon_leaf.svg")
@@ -15,11 +16,11 @@ const TOKEN_TEXTURES := {
 	"lotus": CANON_FLOWER,
 	"bell_flower": CANON_BELL,
 	"lily": CANON_BLOSSOM,
-	"temple": CANON_LEAF,
+	"beetle": CANON_LEAF,
 	"coin": CANON_COIN,
-	"road": CANON_WHEEL,
+	"road": CANON_ROAD,
 	"sun": CANON_SUN,
-	"dhamma_wheel": CANON_WHEEL,
+	"dharma": CANON_WHEEL,
 	"moon": CANON_MOON,
 }
 
