@@ -342,7 +342,8 @@ corner_radius_bottom_left = 999
 
 [node name="Main" type="Control" unique_id=1557950510]
 custom_minimum_size = Vector2(720, 1280)
-layout_mode = 0
+layout_mode = 3
+anchors_preset = 0
 offset_right = 720.0
 offset_bottom = 1280.0
 script = ExtResource("1_main")
@@ -352,24 +353,6 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -1.0
-offset_top = 1.0
-offset_right = -729.0
-offset_bottom = -1279.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-color = Color(0.96862745, 0.9411765, 0.89411765, 1)
-
-[node name="Background2" type="ColorRect" parent="." unique_id=1145331748]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -1.0
-offset_top = 1.0
-offset_right = -729.0
-offset_bottom = -1279.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
@@ -377,10 +360,9 @@ color = Color(0.96862745, 0.9411765, 0.89411765, 1)
 
 [node name="HeaderMargin" type="MarginContainer" parent="." unique_id=1419865446]
 layout_mode = 0
-offset_left = 1.0
-offset_top = 27.0
-offset_right = 725.0
-offset_bottom = 1287.0
+offset_top = 22.0
+offset_right = 720.0
+offset_bottom = 1509.0
 theme_override_constants/margin_left = 30
 theme_override_constants/margin_top = 0
 theme_override_constants/margin_right = 30
@@ -411,17 +393,18 @@ autowrap_mode = 3
 
 [node name="BoardView" parent="." unique_id=1118886290 instance=ExtResource("2_board_view")]
 layout_mode = 1
-offset_left = -2.0
-offset_top = 1.0
-offset_right = -723.0
-offset_bottom = -1279.0
+anchors_preset = 0
+offset_left = 30.0
+offset_top = 178.16
+offset_right = 690.0
+offset_bottom = 1149.4401
 
 [node name="DrawerSheet" type="PanelContainer" parent="." unique_id=117039281]
 clip_contents = true
 layout_mode = 0
-offset_top = 970.0
+offset_top = 1164.8
 offset_right = 720.0
-offset_bottom = 1278.0
+offset_bottom = 1548.8
 theme_override_styles/panel = SubResource("StyleBoxFlat_sugp2")
 
 [node name="DrawerPadding" type="MarginContainer" parent="DrawerSheet" unique_id=2073241405]

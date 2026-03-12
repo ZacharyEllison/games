@@ -121,6 +121,7 @@ func _cache_scene_nodes() -> void:
 	tile_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tile_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	tile_scroll.follow_focus = true
+	tile_row.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	tile_row.add_theme_constant_override("separation", 12)
 	tile_buttons.clear()
 	tile_glyphs.clear()
@@ -133,7 +134,7 @@ func _cache_scene_nodes() -> void:
 		var glyph := button.get_node(glyph_name) as TokenGlyph
 		button.focus_mode = Control.FOCUS_NONE
 		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		button.custom_minimum_size = Vector2(104.0, 104.0)
+		button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		button.tooltip_text = String(tile["name"])
 		button.text = ""
 		var press_callable := _on_tile_pressed.bind(tile_id)
@@ -216,6 +217,7 @@ func _layout_scene() -> void:
 	drawer_title.add_theme_font_size_override("font_size", drawer_title_size)
 	drawer_title.add_theme_color_override("font_color", SLOT_TEXT_COLOR)
 
+	_layout_tile_strip(viewport_size, collapsed_y, expanded_y)
 	_refresh_tile_buttons()
 
 
@@ -230,7 +232,7 @@ func _refresh_tile_buttons() -> void:
 		var background_color := accent.lightened(0.34) if is_selected else TILE_CARD_COLOR
 		var ink_color := accent.darkened(0.72)
 
-		glyph.configure(tile_id, ink_color, 1.0)
+		glyph.configure(tile_id, ink_color, 1.12)
 		button.add_theme_stylebox_override("normal", _make_round_style(background_color, border_color, 3 if is_selected else 2))
 		button.add_theme_stylebox_override("hover", _make_round_style(background_color.lightened(0.05), accent, 3))
 		button.add_theme_stylebox_override("pressed", _make_round_style(background_color.darkened(0.04), accent, 3))
@@ -352,6 +354,33 @@ func _sheet_rest_y() -> float:
 	var collapsed_y := viewport_size.y - peek_height
 	var expanded_y := viewport_size.y - sheet_height
 	return expanded_y if sheet_state == SHEET_EXPANDED else collapsed_y
+
+
+func _layout_tile_strip(viewport_size: Vector2, collapsed_y: float, expanded_y: float) -> void:
+	var tile_button_size: float = clampf(viewport_size.x * 0.19, 126.0, 146.0)
+	var glyph_inset: float = roundf(tile_button_size * 0.1)
+	var reveal: float = _sheet_open_amount(collapsed_y, expanded_y)
+	var tile_visible: bool = reveal > 0.02
+
+	tile_scroll.visible = tile_visible
+	tile_scroll.modulate = Color(1.0, 1.0, 1.0, clampf((reveal - 0.02) / 0.2, 0.0, 1.0))
+	tile_row.position = Vector2.ZERO
+	tile_row.custom_minimum_size = Vector2(0.0, tile_scroll.size.y)
+
+	for tile_id in tile_buttons.keys():
+		var button := tile_buttons[tile_id] as Button
+		var glyph := tile_glyphs[tile_id] as TokenGlyph
+		button.custom_minimum_size = Vector2.ONE * tile_button_size
+		glyph.offset_left = glyph_inset
+		glyph.offset_top = glyph_inset
+		glyph.offset_right = -glyph_inset
+		glyph.offset_bottom = -glyph_inset
+
+func _sheet_open_amount(collapsed_y: float, expanded_y: float) -> float:
+	var distance := collapsed_y - expanded_y
+	if distance <= 0.001:
+		return 1.0
+	return clampf((collapsed_y - sheet_current_y) / distance, 0.0, 1.0)
 
 
 func _sync_drawer_copy() -> void:
