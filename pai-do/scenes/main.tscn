@@ -378,18 +378,13 @@ theme_override_colors/font_color = Color(0.62352943, 0.54509807, 0.35686275, 1)
 theme_override_font_sizes/font_size = 16
 text = "PAI-DO PROTOTYPE"
 
-[node name="TitleLabel" type="Label" parent="HeaderMargin/HeaderBox" unique_id=370648284]
+[node name="TitleButton" type="Button" parent="HeaderMargin/HeaderBox" unique_id=370648284]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.2901961, 0.20392157, 0.15294118, 1)
 theme_override_font_sizes/font_size = 46
+flat = true
 text = "pai-do"
-
-[node name="StatusLabel" type="Label" parent="HeaderMargin/HeaderBox" unique_id=2074355638]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.54509807, 0.44705883, 0.3647059, 1)
-theme_override_font_sizes/font_size = 20
-text = "Select a tile from the drawer, then tap a board point."
-autowrap_mode = 3
+alignment = 0
 
 [node name="TurnLabel" type="Label" parent="HeaderMargin/HeaderBox" unique_id=529104713]
 layout_mode = 2
@@ -398,12 +393,79 @@ theme_override_font_sizes/font_size = 18
 text = "Turn 1. Host tends the garden."
 autowrap_mode = 3
 
-[node name="InteractionLabel" type="Label" parent="HeaderMargin/HeaderBox" unique_id=618823407]
+[node name="RulesModal" type="Control" parent="." unique_id=1336156287]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+z_index = 100
+
+[node name="RulesBackdrop" type="Button" parent="RulesModal" unique_id=1392011446]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+focus_mode = 0
+flat = true
+text = ""
+
+[node name="RulesCenter" type="CenterContainer" parent="RulesModal" unique_id=190746529]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="RulesPanel" type="PanelContainer" parent="RulesModal/RulesCenter" unique_id=1545590997]
+custom_minimum_size = Vector2(520, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.42352942, 0.33333334, 0.2627451, 1)
-theme_override_font_sizes/font_size = 15
-text = "Select a token to see how it affects nearby flowers, links, and flow."
+
+[node name="RulesPadding" type="MarginContainer" parent="RulesModal/RulesCenter/RulesPanel" unique_id=1028638328]
+layout_mode = 2
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 22
+
+[node name="RulesContent" type="VBoxContainer" parent="RulesModal/RulesCenter/RulesPanel/RulesPadding" unique_id=331399198]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="RulesTitle" type="Label" parent="RulesModal/RulesCenter/RulesPanel/RulesPadding/RulesContent" unique_id=1625881597]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2901961, 0.20392157, 0.15294118, 1)
+theme_override_font_sizes/font_size = 28
+text = "How to Tend the Garden"
+horizontal_alignment = 1
 autowrap_mode = 3
+
+[node name="ObjectiveText" type="Label" parent="RulesModal/RulesCenter/RulesPanel/RulesPadding/RulesContent" unique_id=800284632]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.54509807, 0.44705883, 0.3647059, 1)
+theme_override_font_sizes/font_size = 16
+text = "On your turn, place a tile or move one of your own tiles. Each player only has one of each tile. Work together to make all 8 outer garden points bloom. If the full ring blooms with flowers from both players, both players win."
+autowrap_mode = 3
+
+[node name="InteractionText" type="Label" parent="RulesModal/RulesCenter/RulesPanel/RulesPadding/RulesContent" unique_id=1859227302]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2901961, 0.20392157, 0.15294118, 1)
+theme_override_font_sizes/font_size = 16
+text = "Flowers grow stronger from connected flowers and from Sun, Moon, and Dharma. Two adjacent Coin, Road, or Beetle rust a flower, three kill it. Dead tiles return to their player at end of turn."
+autowrap_mode = 3
+
+[node name="CloseRulesButton" type="Button" parent="RulesModal/RulesCenter/RulesPanel/RulesPadding/RulesContent" unique_id=590315155]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+focus_mode = 0
+mouse_default_cursor_shape = 2
+text = "Close"
 
 [node name="BoardView" parent="." unique_id=1118886290 instance=ExtResource("2_board_view")]
 layout_mode = 1

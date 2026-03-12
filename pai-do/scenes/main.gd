@@ -5,6 +5,8 @@ const SHEET_COLLAPSED := 0
 const SHEET_EXPANDED := 1
 const PLAYER_HOST := "host"
 const PLAYER_GUEST := "guest"
+const TOKEN_GLYPH_SCENE := preload("res://scenes/token_glyph.tscn")
+const TOKEN_DRAG_THRESHOLD := 18.0
 
 const BACKGROUND_COLOR := Color("f7f0e4")
 const BOARD_CIRCLE_COLOR := Color("9f8b5b")
@@ -23,10 +25,16 @@ var tile_index_by_id := {}
 @onready var header_margin: MarginContainer = $HeaderMargin
 @onready var header_box: VBoxContainer = $HeaderMargin/HeaderBox
 @onready var eyebrow_label: Label = $HeaderMargin/HeaderBox/EyebrowLabel
-@onready var title_label: Label = $HeaderMargin/HeaderBox/TitleLabel
-@onready var status_label: Label = $HeaderMargin/HeaderBox/StatusLabel
+@onready var title_button: Button = $HeaderMargin/HeaderBox/TitleButton
 @onready var turn_label: Label = $HeaderMargin/HeaderBox/TurnLabel
-@onready var interaction_label: Label = $HeaderMargin/HeaderBox/InteractionLabel
+@onready var rules_modal: Control = $RulesModal
+@onready var rules_backdrop: Button = $RulesModal/RulesBackdrop
+@onready var rules_center: CenterContainer = $RulesModal/RulesCenter
+@onready var rules_panel: PanelContainer = $RulesModal/RulesCenter/RulesPanel
+@onready var rules_title_label: Label = $RulesModal/RulesCenter/RulesPanel/RulesPadding/RulesContent/RulesTitle
+@onready var objective_text_label: Label = $RulesModal/RulesCenter/RulesPanel/RulesPadding/RulesContent/ObjectiveText
+@onready var interaction_text_label: Label = $RulesModal/RulesCenter/RulesPanel/RulesPadding/RulesContent/InteractionText
+@onready var close_rules_button: Button = $RulesModal/RulesCenter/RulesPanel/RulesPadding/RulesContent/CloseRulesButton
 @onready var board_view: BoardView = $BoardView
 @onready var drawer_sheet: PanelContainer = $DrawerSheet
 @onready var drawer_padding: MarginContainer = $DrawerSheet/DrawerPadding
@@ -55,6 +63,18 @@ var sheet_dragging := false
 var sheet_drag_start_y := 0.0
 var sheet_pointer_start_y := 0.0
 var sheet_drag_delta := 0.0
+var token_drag_pending := false
+var token_drag_active := false
+var token_drag_pointer_kind := ""
+var token_drag_pointer_index := -1
+var token_drag_source_kind := ""
+var token_drag_tile_id := ""
+var token_drag_from_slot_id := ""
+var token_drag_source_button: Button
+var token_drag_start_position := Vector2.ZERO
+var token_drag_pointer_position := Vector2.ZERO
+var token_drag_preview: Panel
+var token_drag_preview_glyph: TokenGlyph
 
 
 func _ready() -> void:
@@ -62,11 +82,13 @@ func _ready() -> void:
 		Input.set_emulate_touch_from_mouse(true)
 	_build_data()
 	_cache_scene_nodes()
+	_build_token_drag_preview()
 	_apply_static_theme()
 	board_view.set_tile_defs(tile_defs)
 	if not resized.is_connected(_layout_scene):
 		resized.connect(_layout_scene)
 	set_process(not Engine.is_editor_hint())
+	set_process_input(not Engine.is_editor_hint())
 	_layout_scene()
 	_sync_drawer_copy()
 	_set_objective_text(_goal_text())
@@ -85,6 +107,49 @@ func _process(delta: float) -> void:
 	if absf(next_y - sheet_current_y) > 0.01:
 		sheet_current_y = next_y
 		_layout_scene()
+
+
+func _input(event: InputEvent) -> void:
+	if not token_drag_pending and not token_drag_active:
+		return
+	if not _event_matches_drag_pointer(event):
+		return
+
+	if event is InputEventMouseMotion or event is InputEventScreenDrag:
+		token_drag_pointer_position = _event_position(event)
+		if token_drag_pending and token_drag_pointer_position.distance_to(token_drag_start_position) >= TOKEN_DRAG_THRESHOLD:
+			_start_token_drag()
+		if token_drag_active:
+			_update_token_drag()
+		return
+
+	if (event is InputEventMouseButton or event is InputEventScreenTouch) and not _is_pointer_pressed(event):
+		token_drag_pointer_position = _event_position(event)
+		if token_drag_active:
+			_finish_token_drag()
+		_reset_token_drag_state()
+
+
+func _build_token_drag_preview() -> void:
+	if token_drag_preview != null:
+		return
+
+	token_drag_preview = Panel.new()
+	token_drag_preview.name = "TokenDragPreview"
+	token_drag_preview.top_level = true
+	token_drag_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	token_drag_preview.visible = false
+	token_drag_preview.z_index = 120
+	token_drag_preview.size = Vector2.ONE * 92.0
+	token_drag_preview.pivot_offset = token_drag_preview.size * 0.5
+	token_drag_preview.self_modulate = Color(1.0, 1.0, 1.0, 0.96)
+
+	token_drag_preview_glyph = TOKEN_GLYPH_SCENE.instantiate() as TokenGlyph
+	token_drag_preview_glyph.name = "PreviewGlyph"
+	token_drag_preview_glyph.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	token_drag_preview_glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	token_drag_preview.add_child(token_drag_preview_glyph)
+	add_child(token_drag_preview)
 
 
 func _build_data() -> void:
@@ -112,12 +177,37 @@ func _cache_scene_nodes() -> void:
 	drawer_sheet.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	header_box.add_theme_constant_override("separation", 4)
 	eyebrow_label.text = "PAI-DO PROTOTYPE"
-	title_label.text = "pai-do"
-	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title_button.text = "pai-do"
+	title_button.flat = true
+	title_button.focus_mode = Control.FOCUS_NONE
+	title_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	title_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	if not title_button.pressed.is_connected(_open_rules_modal):
+		title_button.pressed.connect(_open_rules_modal)
 	turn_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	interaction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rules_modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	rules_modal.visible = false
+	rules_modal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rules_modal.z_index = 100
+	rules_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rules_backdrop.flat = true
+	rules_backdrop.disabled = true
+	rules_backdrop.focus_mode = Control.FOCUS_NONE
+	rules_backdrop.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	rules_backdrop.text = ""
+	if not rules_backdrop.pressed.is_connected(_close_rules_modal):
+		rules_backdrop.pressed.connect(_close_rules_modal)
+	rules_title_label.text = "How to Tend the Garden"
+	rules_title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	objective_text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	interaction_text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	close_rules_button.focus_mode = Control.FOCUS_NONE
+	if not close_rules_button.pressed.is_connected(_close_rules_modal):
+		close_rules_button.pressed.connect(_close_rules_modal)
 	if not board_view.slot_activated.is_connected(_on_board_slot_activated):
 		board_view.slot_activated.connect(_on_board_slot_activated)
+	if not board_view.slot_gui_input.is_connected(_on_board_slot_gui_input):
+		board_view.slot_gui_input.connect(_on_board_slot_gui_input)
 	drawer_sheet.clip_contents = true
 	if not drawer_sheet.gui_input.is_connected(_on_drawer_sheet_gui_input):
 		drawer_sheet.gui_input.connect(_on_drawer_sheet_gui_input)
@@ -150,8 +240,11 @@ func _cache_scene_nodes() -> void:
 		button.tooltip_text = String(tile["name"])
 		button.text = ""
 		var press_callable := _on_tile_pressed.bind(tile_id)
+		var input_callable := _on_tile_button_gui_input.bind(tile_id)
 		if not button.pressed.is_connected(press_callable):
 			button.pressed.connect(press_callable)
+		if not button.gui_input.is_connected(input_callable):
+			button.gui_input.connect(input_callable)
 		tile_buttons[tile_id] = button
 		tile_glyphs[tile_id] = glyph
 
@@ -177,7 +270,7 @@ func _layout_scene() -> void:
 		return
 
 	var outer_margin := clampf(viewport_size.x * 0.05, 18.0, 30.0)
-	var header_height := clampf(viewport_size.y * 0.11, 96.0, 144.0)
+	var header_height := clampf(viewport_size.y * 0.09, 78.0, 120.0)
 	var header_top := clampf(viewport_size.y * 0.018, 12.0, 22.0)
 	var board_gap := clampf(viewport_size.y * 0.012, 8.0, 16.0)
 
@@ -214,26 +307,30 @@ func _layout_scene() -> void:
 
 	var title_size := int(clampf(viewport_size.x * 0.072, 30.0, 46.0))
 	var eyebrow_size := int(clampf(viewport_size.x * 0.024, 12.0, 16.0))
-	var objective_size := int(clampf(viewport_size.x * 0.03, 14.0, 18.0))
 	var turn_size := int(clampf(viewport_size.x * 0.034, 16.0, 21.0))
-	var interaction_size := int(clampf(viewport_size.x * 0.028, 13.0, 17.0))
 	var drawer_title_size := int(clampf(viewport_size.x * 0.04, 18.0, 22.0))
+	var modal_title_size := int(clampf(viewport_size.x * 0.046, 24.0, 32.0))
+	var modal_body_size := int(clampf(viewport_size.x * 0.031, 15.0, 19.0))
+	var close_button_size := int(clampf(viewport_size.x * 0.032, 15.0, 18.0))
 
 	eyebrow_label.add_theme_font_size_override("font_size", eyebrow_size)
 	eyebrow_label.add_theme_color_override("font_color", BOARD_CIRCLE_COLOR)
 
-	title_label.add_theme_font_size_override("font_size", title_size)
-	title_label.add_theme_color_override("font_color", TEXT_COLOR)
+	title_button.add_theme_font_size_override("font_size", title_size)
+	title_button.add_theme_color_override("font_color", TEXT_COLOR)
+	title_button.add_theme_color_override("font_hover_color", TEXT_COLOR.lightened(0.08))
+	title_button.add_theme_color_override("font_pressed_color", TEXT_COLOR.darkened(0.08))
+	title_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	title_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	title_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	title_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
-	status_label.add_theme_font_size_override("font_size", objective_size)
-	status_label.add_theme_color_override("font_color", MUTED_TEXT_COLOR)
 	turn_label.add_theme_font_size_override("font_size", turn_size)
 	turn_label.add_theme_color_override("font_color", TEXT_COLOR)
-	interaction_label.add_theme_font_size_override("font_size", interaction_size)
-	interaction_label.add_theme_color_override("font_color", MUTED_TEXT_COLOR.darkened(0.08))
 
 	drawer_title.add_theme_font_size_override("font_size", drawer_title_size)
 	drawer_title.add_theme_color_override("font_color", SLOT_TEXT_COLOR)
+	_apply_rules_modal_theme(modal_title_size, modal_body_size, close_button_size, outer_margin)
 
 	_layout_tile_strip(viewport_size, collapsed_y, expanded_y)
 	_refresh_tile_buttons()
@@ -254,7 +351,7 @@ func _refresh_tile_buttons() -> void:
 			background_color = background_color.darkened(0.04)
 			border_color = TILE_CARD_BORDER.darkened(0.18)
 
-		glyph.configure(tile_id, ink_color, 1.12)
+		glyph.configure(tile_id, ink_color, 1.12, current_player_id == PLAYER_GUEST)
 		button.disabled = not is_available and not is_selected
 		button.modulate = Color(1.0, 1.0, 1.0, 1.0) if is_available or is_selected else Color(1.0, 1.0, 1.0, 0.42)
 		button.add_theme_stylebox_override("normal", _make_round_style(background_color, border_color, 3 if is_selected else 2))
@@ -262,43 +359,58 @@ func _refresh_tile_buttons() -> void:
 		button.add_theme_stylebox_override("pressed", _make_round_style(background_color.darkened(0.04), accent, 3))
 
 
-func _on_tile_pressed(tile_id: String) -> void:
+func _begin_tile_selection(tile_id: String, dragging := false) -> bool:
 	if game_over:
-		return
+		return false
 	if not _tile_available_for_current_player(tile_id):
 		_set_turn_text("%s has already placed %s. Each player only has one of each tile." % [
 			_player_name(current_player_id),
 			String(_tile_by_id(tile_id)["name"]),
 		])
-		return
+		return false
+
 	moving_from_slot_id = ""
 	selected_tile_id = tile_id
 	_refresh_tile_buttons()
 	_sync_drawer_copy()
-	_set_turn_text("%s selected for %s. Tap a board point to place it." % [
+	_set_turn_text("%s selected for %s. %s" % [
 		String(_tile_by_id(tile_id)["name"]),
 		_player_name(current_player_id),
+		"Drag or tap a board point to place it." if dragging else "Tap a board point to place it.",
 	])
 	_set_interaction_text(_interaction_text_for_tile(tile_id))
+	return true
+
+
+func _begin_move_selection(slot_id: String, dragging := false) -> bool:
+	var slot_tile_id := board_view.get_slot_tile_id(slot_id)
+	var slot_owner_id := board_view.get_slot_owner_id(slot_id)
+	if slot_tile_id.is_empty() or slot_owner_id != current_player_id:
+		return false
+
+	moving_from_slot_id = slot_id
+	selected_tile_id = slot_tile_id
+	_refresh_tile_buttons()
+	_sync_drawer_copy()
+	_set_turn_text("%s is moving %s from %s. %s" % [
+		_player_name(current_player_id),
+		String(_tile_by_id(selected_tile_id)["name"]),
+		board_view.get_slot_name(slot_id),
+		"Drop it on a destination point." if dragging else "Tap a destination point.",
+	])
+	_set_interaction_text("Move action: you can move one of your own tiles. Non-flowers can move onto flowers and rust that spot.")
+	return true
+
+
+func _on_tile_pressed(tile_id: String) -> void:
+	_begin_tile_selection(tile_id)
 
 
 func _on_board_slot_activated(slot_id: String) -> void:
 	if game_over:
 		return
 	if selected_tile_id.is_empty():
-		var slot_tile_id := board_view.get_slot_tile_id(slot_id)
-		var slot_owner_id := board_view.get_slot_owner_id(slot_id)
-		if not slot_tile_id.is_empty() and slot_owner_id == current_player_id:
-			moving_from_slot_id = slot_id
-			selected_tile_id = slot_tile_id
-			_refresh_tile_buttons()
-			_sync_drawer_copy()
-			_set_turn_text("%s is moving %s from %s. Tap a destination point." % [
-				_player_name(current_player_id),
-				String(_tile_by_id(selected_tile_id)["name"]),
-				board_view.get_slot_name(slot_id),
-			])
-			_set_interaction_text("Move action: you can move one of your own tiles. Non-flowers can move onto flowers and rust that spot.")
+		if _begin_move_selection(slot_id):
 			return
 		_set_turn_text("%s selected. %s choose a tile from the drawer or tap one of your own tiles to move it." % [
 			board_view.get_slot_name(slot_id),
@@ -328,6 +440,8 @@ func _on_board_slot_activated(slot_id: String) -> void:
 	var state_label: String = _state_label(String(placement["life_state"]))
 	var bloom_suffix: String = " It blooms." if bool(placement["bloom"]) else ""
 	var rust_suffix: String = " The spot rusts." if bool(placement["rusted"]) else ""
+	var dead_tiles: Array = placement["dead_tiles"] if placement.has("dead_tiles") else []
+	var dead_suffix: String = _dead_tiles_suffix(dead_tiles)
 
 	if bool(placement["harmony_win"]):
 		game_over = true
@@ -348,10 +462,215 @@ func _on_board_slot_activated(slot_id: String) -> void:
 		action_text,
 		state_label,
 		bloom_suffix,
-		rust_suffix,
+		rust_suffix + dead_suffix,
 		_turn_prompt(),
 	])
 	_set_interaction_text(_default_interaction_text())
+
+
+func _on_tile_button_gui_input(event: InputEvent, tile_id: String) -> void:
+	if game_over or rules_modal.visible:
+		return
+	if not _is_pointer_pressed(event):
+		return
+	if not _tile_available_for_current_player(tile_id):
+		return
+
+	var button := tile_buttons[tile_id] as Button
+	if button == null:
+		return
+	_stage_token_drag(
+		"drawer",
+		tile_id,
+		"",
+		button,
+		_control_event_global_position(button, _event_position(event)),
+		_event_pointer_kind(event),
+		_event_pointer_index(event)
+	)
+
+
+func _on_board_slot_gui_input(slot_id: String, event: InputEvent, global_position: Vector2) -> void:
+	if game_over or rules_modal.visible:
+		return
+	if not _is_pointer_pressed(event):
+		return
+	if board_view.get_slot_tile_id(slot_id).is_empty() or board_view.get_slot_owner_id(slot_id) != current_player_id:
+		return
+
+	_stage_token_drag(
+		"board",
+		board_view.get_slot_tile_id(slot_id),
+		slot_id,
+		null,
+		global_position,
+		_event_pointer_kind(event),
+		_event_pointer_index(event)
+	)
+
+
+func _stage_token_drag(source_kind: String, tile_id: String, from_slot_id: String, source_button: Button, pointer_position: Vector2, pointer_kind: String, pointer_index: int) -> void:
+	if pointer_kind.is_empty():
+		return
+	if token_drag_pending or token_drag_active:
+		return
+
+	token_drag_pending = true
+	token_drag_pointer_kind = pointer_kind
+	token_drag_pointer_index = pointer_index
+	token_drag_source_kind = source_kind
+	token_drag_tile_id = tile_id
+	token_drag_from_slot_id = from_slot_id
+	token_drag_source_button = source_button
+	token_drag_start_position = pointer_position
+	token_drag_pointer_position = pointer_position
+
+
+func _start_token_drag() -> void:
+	if not token_drag_pending:
+		return
+
+	var started := false
+	if token_drag_source_kind == "board":
+		started = _begin_move_selection(token_drag_from_slot_id, true)
+		board_view.cancel_slot_press(token_drag_from_slot_id)
+	else:
+		started = _begin_tile_selection(token_drag_tile_id, true)
+		_cancel_button_press(token_drag_source_button)
+
+	if not started:
+		_reset_token_drag_state()
+		return
+
+	token_drag_pending = false
+	token_drag_active = true
+	_show_token_drag_preview(token_drag_tile_id)
+	_update_token_drag()
+
+
+func _update_token_drag() -> void:
+	if token_drag_preview != null and token_drag_preview.visible:
+		var pointer_offset := Vector2(30.0, -32.0)
+		if token_drag_pointer_kind == "touch":
+			pointer_offset = Vector2(0.0, -token_drag_preview.size.y * 0.9)
+		token_drag_preview.position = token_drag_pointer_position + pointer_offset - token_drag_preview.size * 0.5
+
+	board_view.set_drag_hover_slot(board_view.slot_id_at_global_point(token_drag_pointer_position))
+
+
+func _finish_token_drag() -> void:
+	var target_slot_id := board_view.slot_id_at_global_point(token_drag_pointer_position)
+	board_view.clear_drag_hover_slot()
+	if target_slot_id.is_empty():
+		_set_turn_text(_drag_release_prompt())
+		return
+	_on_board_slot_activated(target_slot_id)
+
+
+func _reset_token_drag_state() -> void:
+	token_drag_pending = false
+	token_drag_active = false
+	token_drag_pointer_kind = ""
+	token_drag_pointer_index = -1
+	token_drag_source_kind = ""
+	token_drag_tile_id = ""
+	token_drag_from_slot_id = ""
+	token_drag_source_button = null
+	token_drag_start_position = Vector2.ZERO
+	token_drag_pointer_position = Vector2.ZERO
+	board_view.clear_drag_hover_slot()
+	_hide_token_drag_preview()
+
+
+func _show_token_drag_preview(tile_id: String) -> void:
+	if token_drag_preview == null or token_drag_preview_glyph == null:
+		return
+
+	var tile := _tile_by_id(tile_id)
+	var accent := Color(tile["accent"])
+	var preview_size := clampf(minf(size.x, size.y) * 0.14, 88.0, 104.0)
+	var inset := roundf(preview_size * 0.13)
+	var preview_style := _make_round_style(TILE_CARD_COLOR, accent, 3)
+	preview_style.shadow_color = Color(0.18, 0.12, 0.08, 0.2)
+	preview_style.shadow_size = 10
+
+	token_drag_preview.size = Vector2.ONE * preview_size
+	token_drag_preview.pivot_offset = token_drag_preview.size * 0.5
+	token_drag_preview.add_theme_stylebox_override("panel", preview_style)
+	token_drag_preview_glyph.offset_left = inset
+	token_drag_preview_glyph.offset_top = inset
+	token_drag_preview_glyph.offset_right = -inset
+	token_drag_preview_glyph.offset_bottom = -inset
+	token_drag_preview_glyph.configure(tile_id, accent.darkened(0.72), 1.06, current_player_id == PLAYER_GUEST)
+	token_drag_preview.visible = true
+
+
+func _hide_token_drag_preview() -> void:
+	if token_drag_preview != null:
+		token_drag_preview.visible = false
+
+
+func _drag_release_prompt() -> String:
+	if selected_tile_id.is_empty():
+		return _turn_prompt()
+	if moving_from_slot_id.is_empty():
+		return "%s selected for %s. Drag or tap a board point to place it." % [
+			String(_tile_by_id(selected_tile_id)["name"]),
+			_player_name(current_player_id),
+		]
+	return "%s is moving %s from %s. Drag or tap a destination point, or tap the source again to cancel." % [
+		_player_name(current_player_id),
+		String(_tile_by_id(selected_tile_id)["name"]),
+		board_view.get_slot_name(moving_from_slot_id),
+	]
+
+
+func _cancel_button_press(button: Button) -> void:
+	if button != null:
+		button.set_pressed_no_signal(false)
+
+
+func _control_event_global_position(control: Control, local_position: Vector2) -> Vector2:
+	return control.get_global_transform_with_canvas() * local_position
+
+
+func _event_pointer_kind(event: InputEvent) -> String:
+	if event is InputEventMouseButton or event is InputEventMouseMotion:
+		return "mouse"
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		return "touch"
+	return ""
+
+
+func _event_pointer_index(event: InputEvent) -> int:
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		return event.index
+	return 0
+
+
+func _event_position(event: InputEvent) -> Vector2:
+	if event is InputEventMouseButton or event is InputEventMouseMotion:
+		return event.position
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		return event.position
+	return Vector2.ZERO
+
+
+func _is_pointer_pressed(event: InputEvent) -> bool:
+	if event is InputEventMouseButton:
+		return event.button_index == MOUSE_BUTTON_LEFT and event.pressed
+	if event is InputEventScreenTouch:
+		return event.pressed
+	return false
+
+
+func _event_matches_drag_pointer(event: InputEvent) -> bool:
+	var pointer_kind := _event_pointer_kind(event)
+	if pointer_kind.is_empty() or pointer_kind != token_drag_pointer_kind:
+		return false
+	if pointer_kind == "mouse":
+		return not (event is InputEventMouseButton) or event.button_index == MOUSE_BUTTON_LEFT
+	return _event_pointer_index(event) == token_drag_pointer_index
 
 
 func _on_handle_area_gui_input(event: InputEvent) -> void:
@@ -487,7 +806,7 @@ func _sync_drawer_copy() -> void:
 
 
 func _set_objective_text(text: String) -> void:
-	status_label.text = text
+	objective_text_label.text = text
 
 
 func _set_turn_text(text: String) -> void:
@@ -495,7 +814,62 @@ func _set_turn_text(text: String) -> void:
 
 
 func _set_interaction_text(text: String) -> void:
-	interaction_label.text = text
+	interaction_text_label.text = text
+
+
+func _apply_rules_modal_theme(modal_title_size: int, modal_body_size: int, close_button_size: int, outer_margin: float) -> void:
+	rules_backdrop.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	rules_backdrop.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	rules_backdrop.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	rules_backdrop.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	rules_backdrop.modulate = Color(0.0, 0.0, 0.0, 0.22)
+
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = SHEET_COLOR
+	panel_style.border_color = SHEET_BORDER
+	panel_style.set_border_width_all(2)
+	panel_style.corner_radius_top_left = 26
+	panel_style.corner_radius_top_right = 26
+	panel_style.corner_radius_bottom_right = 26
+	panel_style.corner_radius_bottom_left = 26
+	panel_style.shadow_color = Color(0.2, 0.12, 0.08, 0.18)
+	panel_style.shadow_size = 18
+	rules_panel.add_theme_stylebox_override("panel", panel_style)
+
+	var max_panel_width := minf(size.x - outer_margin * 2.0, 560.0)
+	rules_panel.custom_minimum_size = Vector2(max_panel_width, 0.0)
+	var rules_padding := rules_panel.get_node("RulesPadding") as MarginContainer
+	rules_padding.add_theme_constant_override("margin_left", 22)
+	rules_padding.add_theme_constant_override("margin_top", 22)
+	rules_padding.add_theme_constant_override("margin_right", 22)
+	rules_padding.add_theme_constant_override("margin_bottom", 22)
+
+	rules_title_label.add_theme_font_size_override("font_size", modal_title_size)
+	rules_title_label.add_theme_color_override("font_color", TEXT_COLOR)
+	objective_text_label.add_theme_font_size_override("font_size", modal_body_size)
+	objective_text_label.add_theme_color_override("font_color", MUTED_TEXT_COLOR)
+	interaction_text_label.add_theme_font_size_override("font_size", modal_body_size)
+	interaction_text_label.add_theme_color_override("font_color", TEXT_COLOR)
+	close_rules_button.add_theme_font_size_override("font_size", close_button_size)
+	close_rules_button.add_theme_color_override("font_color", TEXT_COLOR)
+	close_rules_button.add_theme_color_override("font_hover_color", TEXT_COLOR)
+	close_rules_button.add_theme_color_override("font_pressed_color", TEXT_COLOR)
+	close_rules_button.add_theme_stylebox_override("normal", _make_round_style(TILE_CARD_COLOR, TILE_CARD_BORDER, 2))
+	close_rules_button.add_theme_stylebox_override("hover", _make_round_style(TILE_CARD_COLOR.lightened(0.04), SHEET_BORDER, 2))
+	close_rules_button.add_theme_stylebox_override("pressed", _make_round_style(TILE_CARD_COLOR.darkened(0.03), SHEET_BORDER, 2))
+
+
+func _open_rules_modal() -> void:
+	_reset_token_drag_state()
+	rules_modal.visible = true
+	rules_modal.mouse_filter = Control.MOUSE_FILTER_STOP
+	rules_backdrop.disabled = false
+
+
+func _close_rules_modal() -> void:
+	rules_backdrop.disabled = true
+	rules_modal.visible = false
+	rules_modal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 func _make_round_style(fill_color: Color, border_color: Color, border_width: int) -> StyleBoxFlat:
@@ -536,25 +910,25 @@ func _goal_text() -> String:
 
 
 func _default_interaction_text() -> String:
-	return "Flowers bloom when nearby support is strong. Flowers cannot be placed on flowers, but non-flowers can be placed on flowers to rust the spot. Each player has one of each tile. Green links are healthy, rust links are unstable, and black links are dead."
+	return "Flowers grow stronger from connected flowers and from Sun, Moon, and Dharma. Two adjacent Coin/Road/Beetle rust a flower, three kill it. Dead tiles return to their player at end of turn."
 
 
 func _interaction_text_for_tile(tile_id: String) -> String:
 	match tile_id:
 		"lotus", "bell_flower", "lily":
-			return "Flower tile: it wants strong nearby support. Sun and Dharma help it bloom; Road, Coin, Moon, and neighboring flowers help sustain the ring."
+			return "Flower tile: it grows stronger with connected flowers and with Sun, Moon, and Dharma. Two adjacent Coin, Road, or Beetle rust it; three kill it."
 		"road":
-			return "Road: strengthens nearby links and spreads support along connected points. Use it to turn ring segments green."
+			return "Road: a harsh structure tile. It can help shape links, but Sun, Moon, and Dharma weaken it, and too many harsh tiles around flowers will rust or kill them."
 		"dharma":
-			return "Dharma: the strongest stabilizer. It gives the biggest support to adjacent tiles and helps weak flowers recover."
+			return "Dharma: a support tile. It strengthens flowers and nearby harmony, and it weakens harsh structure tiles like Coin, Road, and Beetle."
 		"coin":
-			return "Metal Coin: an anchor. It steadies nearby tiles and helps hold a fragile outer ring together."
+			return "Metal Coin: a harsh structure tile. It pressures flowers when clustered, but Sun, Moon, and Dharma can weaken its influence."
 		"sun":
-			return "Sun: strong bloom booster. It gives flowers the largest local push toward green and full bloom."
+			return "Sun: strong flower support. It boosts flowers toward bloom and weakens Coin, Road, and Beetle."
 		"moon":
-			return "Moon: soft support. It helps nearby tiles without pushing as hard as Sun or Dharma, useful for balancing unstable areas."
+			return "Moon: softer flower support. It helps flowers bloom and also weakens Coin, Road, and Beetle."
 		"beetle":
-			return "Beetle: rough shaping piece. Its links run harsher than the others, so use it where you want flow to stay tense or decay."
+			return "Beetle: a harsh structure tile. One nearby is manageable, two can rust a flower, and three can kill it."
 		_:
 			return _default_interaction_text()
 
@@ -563,6 +937,18 @@ func _tile_available_for_current_player(tile_id: String) -> bool:
 	if moving_from_slot_id == "":
 		return board_view.count_tiles_for_owner(tile_id, current_player_id) < 1
 	return selected_tile_id == tile_id
+
+
+func _dead_tiles_suffix(dead_tiles: Array) -> String:
+	if dead_tiles.is_empty():
+		return ""
+	var names: Array = []
+	for dead_tile in dead_tiles:
+		if dead_tile is Dictionary and tile_index_by_id.has(String(dead_tile["tile_id"])):
+			names.append(String(_tile_by_id(String(dead_tile["tile_id"]))["name"]))
+	if names.is_empty():
+		return " Dead tiles return to their player."
+	return " %s returned to their player." % String(", ").join(names)
 
 
 func _player_name(player_id: String) -> String:

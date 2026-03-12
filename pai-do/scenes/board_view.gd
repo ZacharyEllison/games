@@ -3,6 +3,7 @@ class_name BoardView
 extends Control
 
 signal slot_activated(slot_id: String)
+signal slot_gui_input(slot_id: String, event: InputEvent, global_position: Vector2)
 
 const BOARD_ROTATION := PI / 4.0
 const EDGE_THIRD := 1.0 / 3.0
@@ -30,6 +31,16 @@ const FLOWER_IDS := {
 	"lotus": true,
 	"bell_flower": true,
 	"lily": true,
+}
+const SUPPORT_IDS := {
+	"sun": true,
+	"moon": true,
+	"dharma": true,
+}
+const HARSH_IDS := {
+	"coin": true,
+	"road": true,
+	"beetle": true,
 }
 const EDGE_RING := [
 	"top_left",
@@ -74,6 +85,7 @@ var slot_positions := {}
 
 var selected_slot_id := ""
 var hover_slot_id := ""
+var drag_hover_slot_id := ""
 
 var board_center := Vector2.ZERO
 var board_span := 0.0
@@ -123,6 +135,37 @@ func select_slot(slot_id: String) -> void:
 		return
 	selected_slot_id = slot_id
 	_refresh_visuals()
+
+
+func slot_id_at_global_point(global_point: Vector2) -> String:
+	if size.x <= 0.0 or size.y <= 0.0:
+		return ""
+
+	var local_point := get_global_transform_with_canvas().affine_inverse() * global_point
+	var bounds_padding := clampf(slot_button_size * 0.8, 24.0, 60.0)
+	if not Rect2(Vector2.ZERO, size).grow(bounds_padding).has_point(local_point):
+		return ""
+	return _find_slot_for_point(local_point)
+
+
+func set_drag_hover_slot(slot_id: String) -> void:
+	var next_slot_id := slot_id if slot_index_by_id.has(slot_id) else ""
+	if drag_hover_slot_id == next_slot_id:
+		return
+	drag_hover_slot_id = next_slot_id
+	_refresh_visuals()
+
+
+func clear_drag_hover_slot() -> void:
+	set_drag_hover_slot("")
+
+
+func cancel_slot_press(slot_id: String) -> void:
+	if not slot_buttons.has(slot_id):
+		return
+	var button := slot_buttons[slot_id] as Button
+	if button != null:
+		button.set_pressed_no_signal(false)
 
 
 func place_tile(slot_id: String, tile_id: String) -> void:
@@ -204,6 +247,9 @@ func _resolve_tile_action(from_slot_id: String, slot_id: String, tile_id: String
 	slot["rusted"] = bool(slot.get("rusted", false)) or replaces_flower
 	board_slots[int(slot_index_by_id[slot_id])] = slot
 	_evaluate_board_state()
+	var dead_tiles: Array = _collect_dead_tiles()
+	if dead_tiles.size() > 0:
+		_evaluate_board_state()
 	_refresh_visuals()
 	slot = board_slots[int(slot_index_by_id[slot_id])]
 
@@ -215,6 +261,7 @@ func _resolve_tile_action(from_slot_id: String, slot_id: String, tile_id: String
 		"owner_id": owner_id,
 		"replaced_tile_id": existing_tile_id,
 		"rusted": bool(slot["rusted"]),
+		"dead_tiles": dead_tiles,
 		"life_state": String(slot["life_state"]),
 		"bloom": bool(slot["bloom"]),
 		"harmony_win": _has_harmony_circle(),
@@ -422,10 +469,13 @@ func _cache_scene_nodes() -> void:
 		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		button.tooltip_text = String(slot["name"])
 		var press_callable := _on_slot_button_pressed.bind(slot_id)
+		var input_callable := _on_slot_button_gui_input.bind(slot_id)
 		var enter_callable := _on_slot_mouse_entered.bind(slot_id)
 		var exit_callable := _on_slot_mouse_exited.bind(slot_id)
 		if not button.pressed.is_connected(press_callable):
 			button.pressed.connect(press_callable)
+		if not button.gui_input.is_connected(input_callable):
+			button.gui_input.connect(input_callable)
 		if not button.mouse_entered.is_connected(enter_callable):
 			button.mouse_entered.connect(enter_callable)
 		if not button.mouse_exited.is_connected(exit_callable):
@@ -500,7 +550,9 @@ func _refresh_visuals() -> void:
 	if not _built:
 		return
 
-	var focus_slot_id := hover_slot_id if not hover_slot_id.is_empty() else selected_slot_id
+	var focus_slot_id := drag_hover_slot_id
+	if focus_slot_id.is_empty():
+		focus_slot_id = hover_slot_id if not hover_slot_id.is_empty() else selected_slot_id
 
 	for edge in BOARD_CONNECTIONS:
 		var line := line_nodes[_edge_key(edge)] as Line2D
@@ -523,7 +575,12 @@ func _refresh_visuals() -> void:
 			fill_color = TILE_CARD_COLOR
 			border_color = _life_color(String(slot["life_state"]))
 			glyph.visible = true
-			glyph.configure(String(tile["id"]), Color(tile["accent"]).darkened(0.72), 0.92)
+			glyph.configure(
+				String(tile["id"]),
+				Color(tile["accent"]).darkened(0.72),
+				0.92,
+				String(slot["owner_id"]) == PLAYER_GUEST
+			)
 		else:
 			glyph.visible = false
 			if bool(slot.get("rusted", false)):
@@ -532,6 +589,9 @@ func _refresh_visuals() -> void:
 		if slot_id == hover_slot_id:
 			border_color = border_color.lightened(0.16)
 			border_width = 3
+		if slot_id == drag_hover_slot_id:
+			border_color = BOARD_HIGHLIGHT_COLOR
+			border_width = max(border_width, 4)
 		if slot_id == selected_slot_id:
 			border_color = BOARD_HIGHLIGHT_COLOR
 			border_width = 4
@@ -545,6 +605,15 @@ func _refresh_visuals() -> void:
 
 func _on_slot_button_pressed(slot_id: String) -> void:
 	_emit_slot_activation(slot_id)
+
+
+func _on_slot_button_gui_input(event: InputEvent, slot_id: String) -> void:
+	var button := slot_buttons[slot_id] as Button
+	var local_position := _event_position(event)
+	var global_position := local_position
+	if button != null:
+		global_position = button.get_global_transform_with_canvas() * local_position
+	slot_gui_input.emit(slot_id, event, global_position)
 
 
 func _on_slot_mouse_entered(slot_id: String) -> void:
@@ -615,6 +684,14 @@ func _distance_to_segment(point: Vector2, start: Vector2, end: Vector2) -> float
 	return point.distance_to(projection)
 
 
+func _event_position(event: InputEvent) -> Vector2:
+	if event is InputEventMouseButton or event is InputEventMouseMotion:
+		return event.position
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		return event.position
+	return Vector2.ZERO
+
+
 func _slot_color(role: String) -> Color:
 	return CENTER_SLOT_COLOR if role == "center" else EDGE_SLOT_COLOR
 
@@ -649,7 +726,7 @@ func _tile_by_id(tile_id: String) -> Dictionary:
 
 func _evaluate_board_state() -> void:
 	for index in range(board_slots.size()):
-		var slot := board_slots[index]
+		var slot: Dictionary = board_slots[index]
 		var tile_id := String(slot["placed_tile_id"])
 		if tile_id.is_empty():
 			slot["vitality"] = 0.0
@@ -662,13 +739,18 @@ func _evaluate_board_state() -> void:
 		var vitality := _tile_base_power(tile_id)
 		vitality += _support_value(slot)
 		vitality += _harmony_bonus(slot)
-		vitality += _flower_link_bonus(slot)
 		vitality -= _distance_pressure(slot, owner_id)
 		if bool(slot.get("rusted", false)):
 			vitality -= 0.65
 
 		slot["vitality"] = vitality
 		slot["life_state"] = _life_state(vitality)
+		if FLOWER_IDS.has(tile_id):
+			var harsh_neighbors: int = _count_neighbor_group(String(slot["id"]), HARSH_IDS)
+			if harsh_neighbors > 2:
+				slot["life_state"] = "dead"
+			elif harsh_neighbors > 1:
+				slot["life_state"] = "bad"
 		if bool(slot.get("rusted", false)) and String(slot["life_state"]) == "good":
 			slot["life_state"] = "bad"
 		slot["bloom"] = FLOWER_IDS.has(tile_id) and vitality >= 1.5
@@ -687,14 +769,31 @@ func _distance_pressure(slot: Dictionary, owner_id: String) -> float:
 
 
 func _support_value(slot: Dictionary) -> float:
+	var tile_id := String(slot["placed_tile_id"])
+	var slot_id := String(slot["id"])
+	var support_neighbors: int = _count_neighbor_group(slot_id, SUPPORT_IDS)
+	var flower_neighbors: int = _count_neighbor_group(slot_id, FLOWER_IDS)
+	var harsh_neighbors: int = _count_neighbor_group(slot_id, HARSH_IDS)
 	var total := 0.0
 	for neighbor in _neighbors_for_slot(String(slot["id"])):
 		var neighbor_tile_id := String(neighbor["placed_tile_id"])
 		if neighbor_tile_id.is_empty():
 			continue
-		total += _tile_support_power(neighbor_tile_id, String(slot["placed_tile_id"]))
 		if String(neighbor["owner_id"]) != String(slot["owner_id"]):
 			total += 0.12
+	match tile_id:
+		"lotus", "bell_flower", "lily":
+			total += float(flower_neighbors) * 0.42
+			total += float(support_neighbors) * 0.58
+			total -= float(harsh_neighbors) * 0.08
+		"coin", "road", "beetle":
+			total -= float(support_neighbors) * 0.52
+			total += float(harsh_neighbors) * 0.08
+		"sun", "moon", "dharma":
+			total += float(flower_neighbors) * 0.2
+			total += float(support_neighbors) * 0.12
+		_:
+			total += float(support_neighbors) * 0.12
 	return total
 
 
@@ -709,18 +808,6 @@ func _harmony_bonus(slot: Dictionary) -> float:
 	if has_host and has_guest:
 		return 0.55
 	return 0.0
-
-
-func _flower_link_bonus(slot: Dictionary) -> float:
-	var tile_id := String(slot["placed_tile_id"])
-	if not FLOWER_IDS.has(tile_id):
-		return 0.0
-
-	var flower_neighbors := 0
-	for neighbor in _neighbors_for_slot(String(slot["id"])):
-		if FLOWER_IDS.has(String(neighbor["placed_tile_id"])):
-			flower_neighbors += 1
-	return float(flower_neighbors) * 0.22
 
 
 func _tile_base_power(tile_id: String) -> float:
@@ -741,26 +828,6 @@ func _tile_base_power(tile_id: String) -> float:
 			return 0.88
 		_:
 			return 0.9
-
-
-func _tile_support_power(tile_id: String, target_tile_id: String) -> float:
-	match tile_id:
-		"road":
-			return 0.35
-		"dharma":
-			return 0.6
-		"coin":
-			return 0.42
-		"sun":
-			return 0.58 if FLOWER_IDS.has(target_tile_id) else 0.2
-		"moon":
-			return 0.4
-		"beetle":
-			return 0.26
-		"lotus", "bell_flower", "lily":
-			return 0.18
-		_:
-			return 0.0
 
 
 func _life_state(vitality: float) -> String:
@@ -818,6 +885,37 @@ func _neighbors_for_slot(slot_id: String) -> Array[Dictionary]:
 
 func _slot_by_id(slot_id: String) -> Dictionary:
 	return board_slots[int(slot_index_by_id[slot_id])]
+
+
+func _count_neighbor_group(slot_id: String, group: Dictionary) -> int:
+	var total := 0
+	for neighbor in _neighbors_for_slot(slot_id):
+		if group.has(String(neighbor["placed_tile_id"])):
+			total += 1
+	return total
+
+
+func _collect_dead_tiles() -> Array:
+	var dead_tiles: Array = []
+	for index in range(board_slots.size()):
+		var slot: Dictionary = board_slots[index]
+		if String(slot["life_state"]) != "dead":
+			continue
+		var tile_id := String(slot["placed_tile_id"])
+		if tile_id.is_empty():
+			continue
+		dead_tiles.append({
+			"slot_id": String(slot["id"]),
+			"tile_id": tile_id,
+			"owner_id": String(slot["owner_id"]),
+		})
+		slot["placed_tile_id"] = ""
+		slot["owner_id"] = ""
+		slot["vitality"] = 0.0
+		slot["life_state"] = "empty"
+		slot["bloom"] = false
+		board_slots[index] = slot
+	return dead_tiles
 
 
 func _edge_energy_from_slot(slot: Dictionary, opposite_slot_id: String) -> float:
