@@ -7,17 +7,20 @@ const CANON_WHEEL := preload("res://scenes/assets/extracted_tiles/canon_wheel.sv
 const CANON_BELL := preload("res://scenes/assets/extracted_tiles/canon_bell.svg")
 const CANON_BLOSSOM := preload("res://scenes/assets/extracted_tiles/canon_blossom.svg")
 const CANON_LEAF := preload("res://scenes/assets/extracted_tiles/canon_leaf.svg")
+const CANON_COIN := preload("res://scenes/assets/extracted_tiles/canon_coin.svg")
+const CANON_SUN := preload("res://scenes/assets/extracted_tiles/canon_sun.svg")
+const CANON_MOON := preload("res://scenes/assets/extracted_tiles/canon_moon.svg")
 
 const TOKEN_TEXTURES := {
 	"lotus": CANON_FLOWER,
 	"bell_flower": CANON_BELL,
 	"lily": CANON_BLOSSOM,
 	"temple": CANON_LEAF,
-	"coin": CANON_BLOSSOM,
+	"coin": CANON_COIN,
 	"road": CANON_WHEEL,
-	"sun": CANON_FLOWER,
+	"sun": CANON_SUN,
 	"dhamma_wheel": CANON_WHEEL,
-	"moon": CANON_LEAF,
+	"moon": CANON_MOON,
 }
 
 @onready var glyph_texture: TextureRect = $GlyphTexture
