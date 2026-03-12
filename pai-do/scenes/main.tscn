@@ -391,6 +391,13 @@ theme_override_font_sizes/font_size = 20
 text = "Select a tile from the drawer, then tap a board point."
 autowrap_mode = 3
 
+[node name="TurnLabel" type="Label" parent="HeaderMargin/HeaderBox" unique_id=529104713]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2901961, 0.20392157, 0.15294118, 1)
+theme_override_font_sizes/font_size = 18
+text = "Turn 1. Host tends the garden."
+autowrap_mode = 3
+
 [node name="BoardView" parent="." unique_id=1118886290 instance=ExtResource("2_board_view")]
 layout_mode = 1
 anchors_preset = 0

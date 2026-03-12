@@ -25,6 +25,7 @@ var tile_index_by_id := {}
 @onready var eyebrow_label: Label = $HeaderMargin/HeaderBox/EyebrowLabel
 @onready var title_label: Label = $HeaderMargin/HeaderBox/TitleLabel
 @onready var status_label: Label = $HeaderMargin/HeaderBox/StatusLabel
+@onready var turn_label: Label = $HeaderMargin/HeaderBox/TurnLabel
 @onready var board_view: BoardView = $BoardView
 @onready var drawer_sheet: PanelContainer = $DrawerSheet
 @onready var drawer_padding: MarginContainer = $DrawerSheet/DrawerPadding
@@ -66,7 +67,8 @@ func _ready() -> void:
 	set_process(not Engine.is_editor_hint())
 	_layout_scene()
 	_sync_drawer_copy()
-	_set_status(_intro_status())
+	_set_objective_text(_goal_text())
+	_set_turn_text(_turn_prompt())
 
 
 func _process(delta: float) -> void:
@@ -109,6 +111,7 @@ func _cache_scene_nodes() -> void:
 	eyebrow_label.text = "PAI-DO PROTOTYPE"
 	title_label.text = "pai-do"
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	turn_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if not board_view.slot_activated.is_connected(_on_board_slot_activated):
 		board_view.slot_activated.connect(_on_board_slot_activated)
 	drawer_sheet.clip_contents = true
@@ -207,7 +210,8 @@ func _layout_scene() -> void:
 
 	var title_size := int(clampf(viewport_size.x * 0.072, 30.0, 46.0))
 	var eyebrow_size := int(clampf(viewport_size.x * 0.024, 12.0, 16.0))
-	var status_size := int(clampf(viewport_size.x * 0.034, 15.0, 20.0))
+	var objective_size := int(clampf(viewport_size.x * 0.03, 14.0, 18.0))
+	var turn_size := int(clampf(viewport_size.x * 0.034, 16.0, 21.0))
 	var drawer_title_size := int(clampf(viewport_size.x * 0.04, 18.0, 22.0))
 
 	eyebrow_label.add_theme_font_size_override("font_size", eyebrow_size)
@@ -216,8 +220,10 @@ func _layout_scene() -> void:
 	title_label.add_theme_font_size_override("font_size", title_size)
 	title_label.add_theme_color_override("font_color", TEXT_COLOR)
 
-	status_label.add_theme_font_size_override("font_size", status_size)
+	status_label.add_theme_font_size_override("font_size", objective_size)
 	status_label.add_theme_color_override("font_color", MUTED_TEXT_COLOR)
+	turn_label.add_theme_font_size_override("font_size", turn_size)
+	turn_label.add_theme_color_override("font_color", TEXT_COLOR)
 
 	drawer_title.add_theme_font_size_override("font_size", drawer_title_size)
 	drawer_title.add_theme_color_override("font_color", SLOT_TEXT_COLOR)
@@ -249,7 +255,7 @@ func _on_tile_pressed(tile_id: String) -> void:
 	selected_tile_id = tile_id
 	_refresh_tile_buttons()
 	_sync_drawer_copy()
-	_set_status("%s selected for %s. Tap a board point to place it." % [
+	_set_turn_text("%s selected for %s. Tap a board point to place it." % [
 		String(_tile_by_id(tile_id)["name"]),
 		_player_name(current_player_id),
 	])
@@ -259,7 +265,7 @@ func _on_board_slot_activated(slot_id: String) -> void:
 	if game_over:
 		return
 	if selected_tile_id.is_empty():
-		_set_status("%s selected. %s choose a tile from the drawer." % [
+		_set_turn_text("%s selected. %s choose a tile from the drawer." % [
 			board_view.get_slot_name(slot_id),
 			_player_name(current_player_id),
 		])
@@ -268,7 +274,7 @@ func _on_board_slot_activated(slot_id: String) -> void:
 	var tile_name := String(_tile_by_id(selected_tile_id)["name"])
 	var placement := board_view.place_tile_for_owner(slot_id, selected_tile_id, current_player_id)
 	if not bool(placement["ok"]):
-		_set_status(String(placement["message"]))
+		_set_turn_text(String(placement["message"]))
 		return
 
 	var state_label := _state_label(String(placement["life_state"]))
@@ -276,7 +282,7 @@ func _on_board_slot_activated(slot_id: String) -> void:
 
 	if bool(placement["harmony_win"]):
 		game_over = true
-		_set_status("Harmony circle complete. Host and Guest win together with %d blooming flowers." % [
+		_set_turn_text("Harmony circle complete. Host and Guest win together with %d blooming flowers." % [
 			int(placement["host_blooms"]) + int(placement["guest_blooms"]),
 		])
 		return
@@ -285,7 +291,7 @@ func _on_board_slot_activated(slot_id: String) -> void:
 	_refresh_tile_buttons()
 	_sync_drawer_copy()
 	_advance_turn()
-	_set_status("%s placed %s on %s. The line energy is %s.%s %s" % [
+	_set_turn_text("%s placed %s on %s. The line energy is %s.%s %s" % [
 		_player_name(String(placement["owner_id"])),
 		tile_name,
 		board_view.get_slot_name(slot_id),
@@ -427,8 +433,12 @@ func _sync_drawer_copy() -> void:
 	drawer_title.text = String(_tile_by_id(selected_tile_id)["name"]) if has_selection else ""
 
 
-func _set_status(text: String) -> void:
+func _set_objective_text(text: String) -> void:
 	status_label.text = text
+
+
+func _set_turn_text(text: String) -> void:
+	turn_label.text = text
 
 
 func _make_round_style(fill_color: Color, border_color: Color, border_width: int) -> StyleBoxFlat:
@@ -466,10 +476,6 @@ func _turn_prompt() -> String:
 
 func _goal_text() -> String:
 	return "Work together to make all 8 outer garden points bloom. If the full ring blooms with flowers from both players, both players win."
-
-
-func _intro_status() -> String:
-	return "%s %s" % [_goal_text(), _turn_prompt()]
 
 
 func _player_name(player_id: String) -> String:
