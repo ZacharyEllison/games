@@ -398,6 +398,13 @@ theme_override_font_sizes/font_size = 18
 text = "Turn 1. Host tends the garden."
 autowrap_mode = 3
 
+[node name="InteractionLabel" type="Label" parent="HeaderMargin/HeaderBox" unique_id=618823407]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.42352942, 0.33333334, 0.2627451, 1)
+theme_override_font_sizes/font_size = 15
+text = "Select a token to see how it affects nearby flowers, links, and flow."
+autowrap_mode = 3
+
 [node name="BoardView" parent="." unique_id=1118886290 instance=ExtResource("2_board_view")]
 layout_mode = 1
 anchors_preset = 0

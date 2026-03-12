@@ -130,27 +130,91 @@ func place_tile(slot_id: String, tile_id: String) -> void:
 
 
 func place_tile_for_owner(slot_id: String, tile_id: String, owner_id: String) -> Dictionary:
+	return _resolve_tile_action("", slot_id, tile_id, owner_id)
+
+
+func move_tile_for_owner(from_slot_id: String, to_slot_id: String, owner_id: String) -> Dictionary:
+	if not slot_index_by_id.has(from_slot_id):
+		return {"ok": false, "message": "Unknown source point."}
+	var source: Dictionary = board_slots[int(slot_index_by_id[from_slot_id])]
+	var source_tile_id := String(source["placed_tile_id"])
+	if source_tile_id.is_empty():
+		return {"ok": false, "message": "There is no tile to move."}
+	if String(source["owner_id"]) != owner_id:
+		return {"ok": false, "message": "You can only move your own tiles."}
+	return _resolve_tile_action(from_slot_id, to_slot_id, source_tile_id, owner_id)
+
+
+func get_slot_tile_id(slot_id: String) -> String:
+	if not slot_index_by_id.has(slot_id):
+		return ""
+	return String(board_slots[int(slot_index_by_id[slot_id])]["placed_tile_id"])
+
+
+func get_slot_owner_id(slot_id: String) -> String:
+	if not slot_index_by_id.has(slot_id):
+		return ""
+	return String(board_slots[int(slot_index_by_id[slot_id])]["owner_id"])
+
+
+func count_tiles_for_owner(tile_id: String, owner_id: String) -> int:
+	var total := 0
+	for slot in board_slots:
+		if String(slot["placed_tile_id"]) == tile_id and String(slot["owner_id"]) == owner_id:
+			total += 1
+	return total
+
+
+func is_flower_tile(tile_id: String) -> bool:
+	return FLOWER_IDS.has(tile_id)
+
+
+func _resolve_tile_action(from_slot_id: String, slot_id: String, tile_id: String, owner_id: String) -> Dictionary:
 	if not slot_index_by_id.has(slot_id):
 		return {"ok": false, "message": "Unknown board point."}
 	if not tile_index_by_id.has(tile_id):
 		return {"ok": false, "message": "Unknown tile."}
+	if not from_slot_id.is_empty() and from_slot_id == slot_id:
+		return {"ok": false, "message": "Pick a different point to move the tile."}
 
-	var slot := board_slots[int(slot_index_by_id[slot_id])]
-	if not String(slot["placed_tile_id"]).is_empty():
-		return {"ok": false, "message": "%s is already occupied." % String(slot["name"])}
+	var slot: Dictionary = board_slots[int(slot_index_by_id[slot_id])]
+	var existing_tile_id := String(slot["placed_tile_id"])
+	var replaces_flower := false
+	if not existing_tile_id.is_empty():
+		if FLOWER_IDS.has(existing_tile_id):
+			if FLOWER_IDS.has(tile_id):
+				return {"ok": false, "message": "Flowers cannot be placed on flowers."}
+			replaces_flower = true
+		else:
+			return {"ok": false, "message": "%s is already occupied." % String(slot["name"])}
+
+	if not from_slot_id.is_empty():
+		var source_index := int(slot_index_by_id[from_slot_id])
+		var source: Dictionary = board_slots[source_index]
+		source["placed_tile_id"] = ""
+		source["owner_id"] = ""
+		source["vitality"] = 0.0
+		source["life_state"] = "empty"
+		source["bloom"] = false
+		board_slots[source_index] = source
 
 	selected_slot_id = slot_id
 	slot["placed_tile_id"] = tile_id
 	slot["owner_id"] = owner_id
+	slot["rusted"] = bool(slot.get("rusted", false)) or replaces_flower
 	board_slots[int(slot_index_by_id[slot_id])] = slot
 	_evaluate_board_state()
 	_refresh_visuals()
+	slot = board_slots[int(slot_index_by_id[slot_id])]
 
-	var result := {
+	var result: Dictionary = {
 		"ok": true,
+		"from_slot_id": from_slot_id,
 		"slot_id": slot_id,
 		"tile_id": tile_id,
 		"owner_id": owner_id,
+		"replaced_tile_id": existing_tile_id,
+		"rusted": bool(slot["rusted"]),
 		"life_state": String(slot["life_state"]),
 		"bloom": bool(slot["bloom"]),
 		"harmony_win": _has_harmony_circle(),
@@ -194,6 +258,7 @@ func _build_slot_data() -> void:
 			"vitality": 0.0,
 			"life_state": "empty",
 			"bloom": false,
+			"rusted": false,
 		},
 		{
 			"id": "top_right",
@@ -205,6 +270,7 @@ func _build_slot_data() -> void:
 			"vitality": 0.0,
 			"life_state": "empty",
 			"bloom": false,
+			"rusted": false,
 		},
 		{
 			"id": "right_top",
@@ -216,6 +282,7 @@ func _build_slot_data() -> void:
 			"vitality": 0.0,
 			"life_state": "empty",
 			"bloom": false,
+			"rusted": false,
 		},
 		{
 			"id": "right_bottom",
@@ -227,6 +294,7 @@ func _build_slot_data() -> void:
 			"vitality": 0.0,
 			"life_state": "empty",
 			"bloom": false,
+			"rusted": false,
 		},
 		{
 			"id": "bottom_right",
@@ -238,6 +306,7 @@ func _build_slot_data() -> void:
 			"vitality": 0.0,
 			"life_state": "empty",
 			"bloom": false,
+			"rusted": false,
 		},
 		{
 			"id": "bottom_left",
@@ -249,6 +318,7 @@ func _build_slot_data() -> void:
 			"vitality": 0.0,
 			"life_state": "empty",
 			"bloom": false,
+			"rusted": false,
 		},
 		{
 			"id": "left_bottom",
@@ -260,6 +330,7 @@ func _build_slot_data() -> void:
 			"vitality": 0.0,
 			"life_state": "empty",
 			"bloom": false,
+			"rusted": false,
 		},
 		{
 			"id": "left_top",
@@ -271,6 +342,7 @@ func _build_slot_data() -> void:
 			"vitality": 0.0,
 			"life_state": "empty",
 			"bloom": false,
+			"rusted": false,
 		},
 		{
 			"id": "center_top_left",
@@ -282,6 +354,7 @@ func _build_slot_data() -> void:
 			"vitality": 0.0,
 			"life_state": "empty",
 			"bloom": false,
+			"rusted": false,
 		},
 		{
 			"id": "center_top_right",
@@ -293,6 +366,7 @@ func _build_slot_data() -> void:
 			"vitality": 0.0,
 			"life_state": "empty",
 			"bloom": false,
+			"rusted": false,
 		},
 		{
 			"id": "center_bottom_right",
@@ -304,6 +378,7 @@ func _build_slot_data() -> void:
 			"vitality": 0.0,
 			"life_state": "empty",
 			"bloom": false,
+			"rusted": false,
 		},
 		{
 			"id": "center_bottom_left",
@@ -315,6 +390,7 @@ func _build_slot_data() -> void:
 			"vitality": 0.0,
 			"life_state": "empty",
 			"bloom": false,
+			"rusted": false,
 		},
 	]
 
@@ -450,6 +526,8 @@ func _refresh_visuals() -> void:
 			glyph.configure(String(tile["id"]), Color(tile["accent"]).darkened(0.72), 0.92)
 		else:
 			glyph.visible = false
+			if bool(slot.get("rusted", false)):
+				border_color = SLOT_BAD_COLOR
 
 		if slot_id == hover_slot_id:
 			border_color = border_color.lightened(0.16)
@@ -586,9 +664,13 @@ func _evaluate_board_state() -> void:
 		vitality += _harmony_bonus(slot)
 		vitality += _flower_link_bonus(slot)
 		vitality -= _distance_pressure(slot, owner_id)
+		if bool(slot.get("rusted", false)):
+			vitality -= 0.65
 
 		slot["vitality"] = vitality
 		slot["life_state"] = _life_state(vitality)
+		if bool(slot.get("rusted", false)) and String(slot["life_state"]) == "good":
+			slot["life_state"] = "bad"
 		slot["bloom"] = FLOWER_IDS.has(tile_id) and vitality >= 1.5
 		board_slots[index] = slot
 

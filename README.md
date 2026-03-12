@@ -17,3 +17,8 @@ The root of the repo is now a Godot web launcher project. Its source lives in:
 - `data/games.json`
 
 Add future web-playable games by exporting them into their own folders and adding a new entry to `data/games.json`, then re-export the root launcher.
+
+
+# Acknowledgements and Citations
+Pai-Do is inspired by Pai-Sho and the many open fan made games. In particular
+> Designs created by artist Coeur De Lion (https://www.coeurdelionmusic.com/) and SkudPaiSho. Play Vagabond Pai Sho online at The Garden Gate - https://SkudPaiSho.com.

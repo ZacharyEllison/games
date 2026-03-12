@@ -26,6 +26,7 @@ var tile_index_by_id := {}
 @onready var title_label: Label = $HeaderMargin/HeaderBox/TitleLabel
 @onready var status_label: Label = $HeaderMargin/HeaderBox/StatusLabel
 @onready var turn_label: Label = $HeaderMargin/HeaderBox/TurnLabel
+@onready var interaction_label: Label = $HeaderMargin/HeaderBox/InteractionLabel
 @onready var board_view: BoardView = $BoardView
 @onready var drawer_sheet: PanelContainer = $DrawerSheet
 @onready var drawer_padding: MarginContainer = $DrawerSheet/DrawerPadding
@@ -40,6 +41,7 @@ var tile_buttons := {}
 var tile_glyphs := {}
 
 var selected_tile_id := ""
+var moving_from_slot_id := ""
 var current_player_id := PLAYER_HOST
 var turn_count := 1
 var game_over := false
@@ -69,6 +71,7 @@ func _ready() -> void:
 	_sync_drawer_copy()
 	_set_objective_text(_goal_text())
 	_set_turn_text(_turn_prompt())
+	_set_interaction_text(_default_interaction_text())
 
 
 func _process(delta: float) -> void:
@@ -112,6 +115,7 @@ func _cache_scene_nodes() -> void:
 	title_label.text = "pai-do"
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	turn_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	interaction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if not board_view.slot_activated.is_connected(_on_board_slot_activated):
 		board_view.slot_activated.connect(_on_board_slot_activated)
 	drawer_sheet.clip_contents = true
@@ -212,6 +216,7 @@ func _layout_scene() -> void:
 	var eyebrow_size := int(clampf(viewport_size.x * 0.024, 12.0, 16.0))
 	var objective_size := int(clampf(viewport_size.x * 0.03, 14.0, 18.0))
 	var turn_size := int(clampf(viewport_size.x * 0.034, 16.0, 21.0))
+	var interaction_size := int(clampf(viewport_size.x * 0.028, 13.0, 17.0))
 	var drawer_title_size := int(clampf(viewport_size.x * 0.04, 18.0, 22.0))
 
 	eyebrow_label.add_theme_font_size_override("font_size", eyebrow_size)
@@ -224,6 +229,8 @@ func _layout_scene() -> void:
 	status_label.add_theme_color_override("font_color", MUTED_TEXT_COLOR)
 	turn_label.add_theme_font_size_override("font_size", turn_size)
 	turn_label.add_theme_color_override("font_color", TEXT_COLOR)
+	interaction_label.add_theme_font_size_override("font_size", interaction_size)
+	interaction_label.add_theme_color_override("font_color", MUTED_TEXT_COLOR.darkened(0.08))
 
 	drawer_title.add_theme_font_size_override("font_size", drawer_title_size)
 	drawer_title.add_theme_color_override("font_color", SLOT_TEXT_COLOR)
@@ -239,11 +246,17 @@ func _refresh_tile_buttons() -> void:
 		var glyph := tile_glyphs[tile_id] as TokenGlyph
 		var accent := Color(tile["accent"])
 		var is_selected := tile_id == selected_tile_id
+		var is_available := _tile_available_for_current_player(tile_id)
 		var border_color := accent if is_selected else TILE_CARD_BORDER
 		var background_color := accent.lightened(0.34) if is_selected else TILE_CARD_COLOR
 		var ink_color := accent.darkened(0.72)
+		if not is_available and not is_selected:
+			background_color = background_color.darkened(0.04)
+			border_color = TILE_CARD_BORDER.darkened(0.18)
 
 		glyph.configure(tile_id, ink_color, 1.12)
+		button.disabled = not is_available and not is_selected
+		button.modulate = Color(1.0, 1.0, 1.0, 1.0) if is_available or is_selected else Color(1.0, 1.0, 1.0, 0.42)
 		button.add_theme_stylebox_override("normal", _make_round_style(background_color, border_color, 3 if is_selected else 2))
 		button.add_theme_stylebox_override("hover", _make_round_style(background_color.lightened(0.05), accent, 3))
 		button.add_theme_stylebox_override("pressed", _make_round_style(background_color.darkened(0.04), accent, 3))
@@ -252,6 +265,13 @@ func _refresh_tile_buttons() -> void:
 func _on_tile_pressed(tile_id: String) -> void:
 	if game_over:
 		return
+	if not _tile_available_for_current_player(tile_id):
+		_set_turn_text("%s has already placed %s. Each player only has one of each tile." % [
+			_player_name(current_player_id),
+			String(_tile_by_id(tile_id)["name"]),
+		])
+		return
+	moving_from_slot_id = ""
 	selected_tile_id = tile_id
 	_refresh_tile_buttons()
 	_sync_drawer_copy()
@@ -259,46 +279,79 @@ func _on_tile_pressed(tile_id: String) -> void:
 		String(_tile_by_id(tile_id)["name"]),
 		_player_name(current_player_id),
 	])
+	_set_interaction_text(_interaction_text_for_tile(tile_id))
 
 
 func _on_board_slot_activated(slot_id: String) -> void:
 	if game_over:
 		return
 	if selected_tile_id.is_empty():
-		_set_turn_text("%s selected. %s choose a tile from the drawer." % [
+		var slot_tile_id := board_view.get_slot_tile_id(slot_id)
+		var slot_owner_id := board_view.get_slot_owner_id(slot_id)
+		if not slot_tile_id.is_empty() and slot_owner_id == current_player_id:
+			moving_from_slot_id = slot_id
+			selected_tile_id = slot_tile_id
+			_refresh_tile_buttons()
+			_sync_drawer_copy()
+			_set_turn_text("%s is moving %s from %s. Tap a destination point." % [
+				_player_name(current_player_id),
+				String(_tile_by_id(selected_tile_id)["name"]),
+				board_view.get_slot_name(slot_id),
+			])
+			_set_interaction_text("Move action: you can move one of your own tiles. Non-flowers can move onto flowers and rust that spot.")
+			return
+		_set_turn_text("%s selected. %s choose a tile from the drawer or tap one of your own tiles to move it." % [
 			board_view.get_slot_name(slot_id),
 			_player_name(current_player_id),
 		])
+		_set_interaction_text(_default_interaction_text())
 		return
 
 	var tile_name := String(_tile_by_id(selected_tile_id)["name"])
-	var placement := board_view.place_tile_for_owner(slot_id, selected_tile_id, current_player_id)
+	var placement: Dictionary = {}
+	if not moving_from_slot_id.is_empty():
+		if moving_from_slot_id == slot_id:
+			moving_from_slot_id = ""
+			selected_tile_id = ""
+			_refresh_tile_buttons()
+			_sync_drawer_copy()
+			_set_turn_text("Move cancelled. %s" % _turn_prompt())
+			_set_interaction_text(_default_interaction_text())
+			return
+		placement = board_view.move_tile_for_owner(moving_from_slot_id, slot_id, current_player_id)
+	else:
+		placement = board_view.place_tile_for_owner(slot_id, selected_tile_id, current_player_id)
 	if not bool(placement["ok"]):
 		_set_turn_text(String(placement["message"]))
 		return
 
-	var state_label := _state_label(String(placement["life_state"]))
-	var bloom_suffix := " It blooms." if bool(placement["bloom"]) else ""
+	var state_label: String = _state_label(String(placement["life_state"]))
+	var bloom_suffix: String = " It blooms." if bool(placement["bloom"]) else ""
+	var rust_suffix: String = " The spot rusts." if bool(placement["rusted"]) else ""
 
 	if bool(placement["harmony_win"]):
 		game_over = true
 		_set_turn_text("Harmony circle complete. Host and Guest win together with %d blooming flowers." % [
 			int(placement["host_blooms"]) + int(placement["guest_blooms"]),
 		])
+		_set_interaction_text("Harmony win: the full outer ring is blooming with flowers from both players.")
 		return
 
+	var action_text: String = "moved %s to %s" % [tile_name, board_view.get_slot_name(slot_id)] if not moving_from_slot_id.is_empty() else "placed %s on %s" % [tile_name, board_view.get_slot_name(slot_id)]
+	moving_from_slot_id = ""
 	selected_tile_id = ""
+	_advance_turn()
 	_refresh_tile_buttons()
 	_sync_drawer_copy()
-	_advance_turn()
-	_set_turn_text("%s placed %s on %s. The line energy is %s.%s %s" % [
+	_set_turn_text("%s %s. The line energy is %s.%s%s %s" % [
 		_player_name(String(placement["owner_id"])),
-		tile_name,
-		board_view.get_slot_name(slot_id),
+		action_text,
 		state_label,
 		bloom_suffix,
+		rust_suffix,
 		_turn_prompt(),
 	])
+	_set_interaction_text(_default_interaction_text())
 
 
 func _on_handle_area_gui_input(event: InputEvent) -> void:
@@ -441,6 +494,10 @@ func _set_turn_text(text: String) -> void:
 	turn_label.text = text
 
 
+func _set_interaction_text(text: String) -> void:
+	interaction_label.text = text
+
+
 func _make_round_style(fill_color: Color, border_color: Color, border_width: int) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = fill_color
@@ -475,7 +532,37 @@ func _turn_prompt() -> String:
 
 
 func _goal_text() -> String:
-	return "Work together to make all 8 outer garden points bloom. If the full ring blooms with flowers from both players, both players win."
+	return "On your turn, place a tile or move one of your own tiles. Each player only has one of each tile. Work together to make all 8 outer garden points bloom. If the full ring blooms with flowers from both players, both players win."
+
+
+func _default_interaction_text() -> String:
+	return "Flowers bloom when nearby support is strong. Flowers cannot be placed on flowers, but non-flowers can be placed on flowers to rust the spot. Each player has one of each tile. Green links are healthy, rust links are unstable, and black links are dead."
+
+
+func _interaction_text_for_tile(tile_id: String) -> String:
+	match tile_id:
+		"lotus", "bell_flower", "lily":
+			return "Flower tile: it wants strong nearby support. Sun and Dharma help it bloom; Road, Coin, Moon, and neighboring flowers help sustain the ring."
+		"road":
+			return "Road: strengthens nearby links and spreads support along connected points. Use it to turn ring segments green."
+		"dharma":
+			return "Dharma: the strongest stabilizer. It gives the biggest support to adjacent tiles and helps weak flowers recover."
+		"coin":
+			return "Metal Coin: an anchor. It steadies nearby tiles and helps hold a fragile outer ring together."
+		"sun":
+			return "Sun: strong bloom booster. It gives flowers the largest local push toward green and full bloom."
+		"moon":
+			return "Moon: soft support. It helps nearby tiles without pushing as hard as Sun or Dharma, useful for balancing unstable areas."
+		"beetle":
+			return "Beetle: rough shaping piece. Its links run harsher than the others, so use it where you want flow to stay tense or decay."
+		_:
+			return _default_interaction_text()
+
+
+func _tile_available_for_current_player(tile_id: String) -> bool:
+	if moving_from_slot_id == "":
+		return board_view.count_tiles_for_owner(tile_id, current_player_id) < 1
+	return selected_tile_id == tile_id
 
 
 func _player_name(player_id: String) -> String:
