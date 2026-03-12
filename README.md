@@ -9,14 +9,12 @@ The hope is to make them all playable on web and through this repo.
 
 ## Web launcher
 
-The root of the repo is now a Godot web launcher project. Its source lives in:
+The root of the repo now serves a static HTML launcher page instead of booting a Godot scene.
 
-- `project.godot`
-- `scenes/main.tscn`
-- `scripts/main.gd`
+- `index.html`
 - `data/games.json`
 
-Add future web-playable games by exporting them into their own folders and adding a new entry to `data/games.json`, then re-export the root launcher.
+Add future web-playable games by exporting them into their own folders and adding a new entry to `data/games.json`.
 
 
 # Acknowledgements and Citations
