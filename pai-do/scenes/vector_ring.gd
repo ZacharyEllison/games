@@ -1,3 +1,4 @@
+@tool
 class_name VectorRing
 extends Node2D
 

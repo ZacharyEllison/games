@@ -1,3 +1,4 @@
+@tool
 class_name BoardView
 extends Control
 
@@ -5,8 +6,6 @@ signal slot_activated(slot_id: String)
 
 const BOARD_ROTATION := PI / 4.0
 const EDGE_THIRD := 1.0 / 3.0
-const TOKEN_SCENE := preload("res://scenes/token_glyph.tscn")
-const VECTOR_RING_SCENE := preload("res://scenes/vector_ring.tscn")
 
 const BOARD_FRAME_COLOR := Color("e6d6c0")
 const BOARD_FRAME_BORDER := Color("9d7458")
@@ -40,10 +39,10 @@ var slot_index_by_id := {}
 var tile_defs: Array[Dictionary] = []
 var tile_index_by_id := {}
 
-var board_plate: Panel
-var board_canvas: Node2D
-var board_circle: VectorRing
-var slot_layer: Control
+@onready var board_plate: Panel = $BoardPlate
+@onready var board_canvas: Node2D = $BoardCanvas
+@onready var board_circle: VectorRing = $BoardCanvas/BoardCircle
+@onready var slot_layer: Control = $SlotLayer
 
 var line_nodes := {}
 var slot_buttons := {}
@@ -64,10 +63,12 @@ var _built := false
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build_slot_data()
-	_build_scene()
+	_cache_scene_nodes()
 	_apply_static_theme()
-	resized.connect(_layout_board)
-	mouse_exited.connect(_clear_hover_slot)
+	if not resized.is_connected(_layout_board):
+		resized.connect(_layout_board)
+	if not mouse_exited.is_connected(_clear_hover_slot):
+		mouse_exited.connect(_clear_hover_slot)
 	_built = true
 	_layout_board()
 	_refresh_visuals()
@@ -224,52 +225,39 @@ func _build_slot_data() -> void:
 		slot_index_by_id[String(board_slots[index]["id"])] = index
 
 
-func _build_scene() -> void:
-	board_plate = Panel.new()
-	board_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(board_plate)
-
-	board_canvas = Node2D.new()
-	add_child(board_canvas)
-
-	board_circle = VECTOR_RING_SCENE.instantiate() as VectorRing
-	board_circle.name = "BoardCircle"
-	board_canvas.add_child(board_circle)
+func _cache_scene_nodes() -> void:
+	line_nodes.clear()
+	slot_buttons.clear()
+	slot_glyphs.clear()
 
 	for edge in BOARD_CONNECTIONS:
-		var line := Line2D.new()
+		var line_name := "Line_%s" % _edge_key(edge).replace(":", "_")
+		var line := board_canvas.get_node(line_name) as Line2D
 		line.default_color = BOARD_LINE_COLOR
 		line.begin_cap_mode = Line2D.LINE_CAP_ROUND
 		line.end_cap_mode = Line2D.LINE_CAP_ROUND
 		line.joint_mode = Line2D.LINE_JOINT_ROUND
-		board_canvas.add_child(line)
 		line_nodes[_edge_key(edge)] = line
-
-	slot_layer = Control.new()
-	slot_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(slot_layer)
 
 	for slot in board_slots:
 		var slot_id := String(slot["id"])
-		var button := Button.new()
+		var button_name := "%sButton" % _slot_node_key(slot_id)
+		var glyph_name := "%sGlyph" % _slot_node_key(slot_id)
+		var button := slot_layer.get_node(button_name) as Button
+		var glyph := button.get_node(glyph_name) as TokenGlyph
 		button.focus_mode = Control.FOCUS_NONE
 		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		button.tooltip_text = String(slot["name"])
-		button.pressed.connect(_on_slot_button_pressed.bind(slot_id))
-		button.mouse_entered.connect(_on_slot_mouse_entered.bind(slot_id))
-		button.mouse_exited.connect(_on_slot_mouse_exited.bind(slot_id))
-		slot_layer.add_child(button)
+		var press_callable := _on_slot_button_pressed.bind(slot_id)
+		var enter_callable := _on_slot_mouse_entered.bind(slot_id)
+		var exit_callable := _on_slot_mouse_exited.bind(slot_id)
+		if not button.pressed.is_connected(press_callable):
+			button.pressed.connect(press_callable)
+		if not button.mouse_entered.is_connected(enter_callable):
+			button.mouse_entered.connect(enter_callable)
+		if not button.mouse_exited.is_connected(exit_callable):
+			button.mouse_exited.connect(exit_callable)
 		slot_buttons[slot_id] = button
-
-		var glyph := TOKEN_SCENE.instantiate() as TokenGlyph
-		glyph.name = "%sGlyph" % slot_id
-		glyph.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		glyph.offset_left = 8.0
-		glyph.offset_top = 8.0
-		glyph.offset_right = -8.0
-		glyph.offset_bottom = -8.0
-		glyph.visible = false
-		button.add_child(glyph)
 		slot_glyphs[slot_id] = glyph
 
 
@@ -470,6 +458,14 @@ func _make_round_style(fill_color: Color, border_color: Color, border_width: int
 
 func _edge_key(edge: Array) -> String:
 	return "%s:%s" % [String(edge[0]), String(edge[1])]
+
+
+func _slot_node_key(slot_id: String) -> String:
+	var parts := slot_id.split("_")
+	var result := ""
+	for part in parts:
+		result += part.substr(0, 1).to_upper() + part.substr(1)
+	return result
 
 
 func _tile_by_id(tile_id: String) -> Dictionary:

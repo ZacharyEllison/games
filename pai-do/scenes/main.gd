@@ -1,9 +1,8 @@
+@tool
 extends Control
 
 const SHEET_COLLAPSED := 0
 const SHEET_EXPANDED := 1
-const BOARD_VIEW_SCENE := preload("res://scenes/board_view.tscn")
-const TOKEN_SCENE := preload("res://scenes/token_glyph.tscn")
 
 const BACKGROUND_COLOR := Color("f7f0e4")
 const BOARD_CIRCLE_COLOR := Color("9f8b5b")
@@ -18,21 +17,21 @@ const SLOT_TEXT_COLOR := Color("4f3728")
 var tile_defs: Array[Dictionary] = []
 var tile_index_by_id := {}
 
-var background: ColorRect
-var header_margin: MarginContainer
-var header_box: VBoxContainer
-var eyebrow_label: Label
-var title_label: Label
-var status_label: Label
-var board_view: BoardView
-var drawer_sheet: PanelContainer
-var drawer_padding: MarginContainer
-var drawer_content: VBoxContainer
-var handle_area: Control
-var handle_bar: ColorRect
-var drawer_title: Label
-var tile_scroll: ScrollContainer
-var tile_row: HBoxContainer
+@onready var background: ColorRect = $Background
+@onready var header_margin: MarginContainer = $HeaderMargin
+@onready var header_box: VBoxContainer = $HeaderMargin/HeaderBox
+@onready var eyebrow_label: Label = $HeaderMargin/HeaderBox/EyebrowLabel
+@onready var title_label: Label = $HeaderMargin/HeaderBox/TitleLabel
+@onready var status_label: Label = $HeaderMargin/HeaderBox/StatusLabel
+@onready var board_view: BoardView = $BoardView
+@onready var drawer_sheet: PanelContainer = $DrawerSheet
+@onready var drawer_padding: MarginContainer = $DrawerSheet/DrawerPadding
+@onready var drawer_content: VBoxContainer = $DrawerSheet/DrawerPadding/DrawerContent
+@onready var handle_area: Control = $DrawerSheet/DrawerPadding/DrawerContent/HandleArea
+@onready var handle_bar: ColorRect = $DrawerSheet/DrawerPadding/DrawerContent/HandleArea/HandleBox/HandleCenter/HandleBar
+@onready var drawer_title: Label = $DrawerSheet/DrawerPadding/DrawerContent/HandleArea/HandleBox/DrawerTitle
+@onready var tile_scroll: ScrollContainer = $DrawerSheet/DrawerPadding/DrawerContent/TileScroll
+@onready var tile_row: HBoxContainer = $DrawerSheet/DrawerPadding/DrawerContent/TileScroll/TileRow
 
 var tile_buttons := {}
 var tile_glyphs := {}
@@ -51,13 +50,15 @@ var sheet_drag_delta := 0.0
 
 
 func _ready() -> void:
-	Input.set_emulate_touch_from_mouse(true)
+	if not Engine.is_editor_hint():
+		Input.set_emulate_touch_from_mouse(true)
 	_build_data()
-	_build_scene()
-	_build_tile_buttons()
+	_cache_scene_nodes()
 	_apply_static_theme()
 	board_view.set_tile_defs(tile_defs)
-	resized.connect(_layout_scene)
+	if not resized.is_connected(_layout_scene):
+		resized.connect(_layout_scene)
+	set_process(not Engine.is_editor_hint())
 	_layout_scene()
 	_sync_drawer_copy()
 	_set_status("Select a tile from the drawer, then tap a board point.")
@@ -93,110 +94,52 @@ func _build_data() -> void:
 		tile_index_by_id[String(tile_defs[index]["id"])] = index
 
 
-func _build_scene() -> void:
-	background = ColorRect.new()
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+func _cache_scene_nodes() -> void:
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(background)
-
-	header_margin = MarginContainer.new()
-	add_child(header_margin)
-
-	header_box = VBoxContainer.new()
+	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	header_margin.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	board_view.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	drawer_sheet.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	header_box.add_theme_constant_override("separation", 4)
-	header_margin.add_child(header_box)
-
-	eyebrow_label = Label.new()
 	eyebrow_label.text = "PAI-DO PROTOTYPE"
-	header_box.add_child(eyebrow_label)
-
-	title_label = Label.new()
 	title_label.text = "pai-do"
-	header_box.add_child(title_label)
-
-	status_label = Label.new()
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	header_box.add_child(status_label)
-
-	board_view = BOARD_VIEW_SCENE.instantiate() as BoardView
-	board_view.name = "BoardView"
-	board_view.slot_activated.connect(_on_board_slot_activated)
-	add_child(board_view)
-
-	drawer_sheet = PanelContainer.new()
+	if not board_view.slot_activated.is_connected(_on_board_slot_activated):
+		board_view.slot_activated.connect(_on_board_slot_activated)
 	drawer_sheet.clip_contents = true
-	drawer_sheet.gui_input.connect(_on_drawer_sheet_gui_input)
-	add_child(drawer_sheet)
-
-	drawer_padding = MarginContainer.new()
+	if not drawer_sheet.gui_input.is_connected(_on_drawer_sheet_gui_input):
+		drawer_sheet.gui_input.connect(_on_drawer_sheet_gui_input)
 	drawer_padding.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	drawer_sheet.add_child(drawer_padding)
-
-	drawer_content = VBoxContainer.new()
 	drawer_content.add_theme_constant_override("separation", 8)
-	drawer_padding.add_child(drawer_content)
-
-	handle_area = Control.new()
 	handle_area.custom_minimum_size = Vector2(0.0, 58.0)
 	handle_area.mouse_filter = Control.MOUSE_FILTER_STOP
-	handle_area.gui_input.connect(_on_handle_area_gui_input)
-	drawer_content.add_child(handle_area)
-
-	var handle_box := VBoxContainer.new()
-	handle_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	handle_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	handle_box.add_theme_constant_override("separation", 8)
-	handle_area.add_child(handle_box)
-
-	var handle_center := CenterContainer.new()
-	handle_center.custom_minimum_size = Vector2(0.0, 18.0)
-	handle_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	handle_box.add_child(handle_center)
-
-	handle_bar = ColorRect.new()
-	handle_bar.custom_minimum_size = Vector2(70.0, 6.0)
-	handle_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	handle_center.add_child(handle_bar)
-
-	drawer_title = Label.new()
+	if not handle_area.gui_input.is_connected(_on_handle_area_gui_input):
+		handle_area.gui_input.connect(_on_handle_area_gui_input)
 	drawer_title.visible = false
 	drawer_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	drawer_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	handle_box.add_child(drawer_title)
-
-	tile_scroll = ScrollContainer.new()
 	tile_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tile_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	tile_scroll.follow_focus = true
-	drawer_content.add_child(tile_scroll)
-
-	tile_row = HBoxContainer.new()
 	tile_row.add_theme_constant_override("separation", 12)
-	tile_scroll.add_child(tile_row)
+	tile_buttons.clear()
+	tile_glyphs.clear()
 
-
-func _build_tile_buttons() -> void:
 	for tile in tile_defs:
 		var tile_id := String(tile["id"])
-		var button := Button.new()
+		var button_name := "%sButton" % _tile_node_key(tile_id)
+		var glyph_name := "%sToken" % _tile_node_key(tile_id)
+		var button := tile_row.get_node(button_name) as Button
+		var glyph := button.get_node(glyph_name) as TokenGlyph
 		button.focus_mode = Control.FOCUS_NONE
 		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		button.custom_minimum_size = Vector2(104.0, 104.0)
 		button.tooltip_text = String(tile["name"])
 		button.text = ""
-		button.pressed.connect(_on_tile_pressed.bind(tile_id))
-		tile_row.add_child(button)
+		var press_callable := _on_tile_pressed.bind(tile_id)
+		if not button.pressed.is_connected(press_callable):
+			button.pressed.connect(press_callable)
 		tile_buttons[tile_id] = button
-
-		var glyph := TOKEN_SCENE.instantiate() as TokenGlyph
-		glyph.name = "%sToken" % tile_id
-		glyph.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		glyph.offset_left = 16.0
-		glyph.offset_top = 16.0
-		glyph.offset_right = -16.0
-		glyph.offset_bottom = -16.0
-		glyph.configure(tile_id, TEXT_COLOR, 1.0)
-		button.add_child(glyph)
 		tile_glyphs[tile_id] = glyph
 
 
@@ -435,3 +378,11 @@ func _make_round_style(fill_color: Color, border_color: Color, border_width: int
 
 func _tile_by_id(tile_id: String) -> Dictionary:
 	return tile_defs[int(tile_index_by_id[tile_id])]
+
+
+func _tile_node_key(tile_id: String) -> String:
+	var parts := tile_id.split("_")
+	var result := ""
+	for part in parts:
+		result += part.substr(0, 1).to_upper() + part.substr(1)
+	return result
