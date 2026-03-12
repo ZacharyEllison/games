@@ -3,6 +3,8 @@ extends Control
 
 const SHEET_COLLAPSED := 0
 const SHEET_EXPANDED := 1
+const PLAYER_HOST := "host"
+const PLAYER_GUEST := "guest"
 
 const BACKGROUND_COLOR := Color("f7f0e4")
 const BOARD_CIRCLE_COLOR := Color("9f8b5b")
@@ -37,6 +39,9 @@ var tile_buttons := {}
 var tile_glyphs := {}
 
 var selected_tile_id := ""
+var current_player_id := PLAYER_HOST
+var turn_count := 1
+var game_over := false
 
 var sheet_state := SHEET_COLLAPSED
 var sheet_current_y := 0.0
@@ -61,7 +66,7 @@ func _ready() -> void:
 	set_process(not Engine.is_editor_hint())
 	_layout_scene()
 	_sync_drawer_copy()
-	_set_status("Select a tile from the drawer, then tap a board point.")
+	_set_status(_intro_status())
 
 
 func _process(delta: float) -> void:
@@ -239,21 +244,54 @@ func _refresh_tile_buttons() -> void:
 
 
 func _on_tile_pressed(tile_id: String) -> void:
+	if game_over:
+		return
 	selected_tile_id = tile_id
 	_refresh_tile_buttons()
 	_sync_drawer_copy()
-	_set_status("%s selected. Tap a board point to place it." % String(_tile_by_id(tile_id)["name"]))
+	_set_status("%s selected for %s. Tap a board point to place it." % [
+		String(_tile_by_id(tile_id)["name"]),
+		_player_name(current_player_id),
+	])
 
 
 func _on_board_slot_activated(slot_id: String) -> void:
+	if game_over:
+		return
 	if selected_tile_id.is_empty():
-		_set_status("%s selected. Choose a tile from the drawer." % board_view.get_slot_name(slot_id))
+		_set_status("%s selected. %s choose a tile from the drawer." % [
+			board_view.get_slot_name(slot_id),
+			_player_name(current_player_id),
+		])
 		return
 
-	board_view.place_tile(slot_id, selected_tile_id)
-	_set_status("Placed %s on %s." % [
-		String(_tile_by_id(selected_tile_id)["name"]),
+	var tile_name := String(_tile_by_id(selected_tile_id)["name"])
+	var placement := board_view.place_tile_for_owner(slot_id, selected_tile_id, current_player_id)
+	if not bool(placement["ok"]):
+		_set_status(String(placement["message"]))
+		return
+
+	var state_label := _state_label(String(placement["life_state"]))
+	var bloom_suffix := " It blooms." if bool(placement["bloom"]) else ""
+
+	if bool(placement["harmony_win"]):
+		game_over = true
+		_set_status("Harmony circle complete. Host and Guest win together with %d blooming flowers." % [
+			int(placement["host_blooms"]) + int(placement["guest_blooms"]),
+		])
+		return
+
+	selected_tile_id = ""
+	_refresh_tile_buttons()
+	_sync_drawer_copy()
+	_advance_turn()
+	_set_status("%s placed %s on %s. The line energy is %s.%s %s" % [
+		_player_name(String(placement["owner_id"])),
+		tile_name,
 		board_view.get_slot_name(slot_id),
+		state_label,
+		bloom_suffix,
+		_turn_prompt(),
 	])
 
 
@@ -415,3 +453,34 @@ func _tile_node_key(tile_id: String) -> String:
 	for part in parts:
 		result += part.substr(0, 1).to_upper() + part.substr(1)
 	return result
+
+
+func _advance_turn() -> void:
+	turn_count += 1
+	current_player_id = PLAYER_GUEST if current_player_id == PLAYER_HOST else PLAYER_HOST
+
+
+func _turn_prompt() -> String:
+	return "Turn %d. %s tends the garden." % [turn_count, _player_name(current_player_id)]
+
+
+func _goal_text() -> String:
+	return "Work together to make all 8 outer garden points bloom. If the full ring blooms with flowers from both players, both players win."
+
+
+func _intro_status() -> String:
+	return "%s %s" % [_goal_text(), _turn_prompt()]
+
+
+func _player_name(player_id: String) -> String:
+	return "Host" if player_id == PLAYER_HOST else "Guest"
+
+
+func _state_label(life_state: String) -> String:
+	match life_state:
+		"good":
+			return "green"
+		"dead":
+			return "dead"
+		_:
+			return "rust"

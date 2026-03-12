@@ -6,18 +6,41 @@ signal slot_activated(slot_id: String)
 
 const BOARD_ROTATION := PI / 4.0
 const EDGE_THIRD := 1.0 / 3.0
+const PLAYER_HOST := "host"
+const PLAYER_GUEST := "guest"
 
 const BOARD_FRAME_COLOR := Color("e6d6c0")
 const BOARD_FRAME_BORDER := Color("9d7458")
 const BOARD_CIRCLE_COLOR := Color("9f8b5b")
 const BOARD_LINE_COLOR := Color("8d6245")
 const BOARD_HIGHLIGHT_COLOR := Color("c66f3d")
+const LINE_GOOD_COLOR := Color("6f9d57")
+const LINE_BAD_COLOR := Color("9a5f2f")
+const LINE_DEAD_COLOR := Color("221915")
 const SLOT_IDLE_FILL := Color("f8efe1")
 const SLOT_CENTER_FILL := Color("e9d7c1")
 const TILE_CARD_COLOR := Color("f4e8d8")
 const TEXT_COLOR := Color("4a3427")
 const EDGE_SLOT_COLOR := Color("9d7a5b")
 const CENTER_SLOT_COLOR := Color("c66f3d")
+const SLOT_GOOD_COLOR := Color("6f9d57")
+const SLOT_BAD_COLOR := Color("9a5f2f")
+const SLOT_DEAD_COLOR := Color("221915")
+const FLOWER_IDS := {
+	"lotus": true,
+	"bell_flower": true,
+	"lily": true,
+}
+const EDGE_RING := [
+	"top_left",
+	"top_right",
+	"right_top",
+	"right_bottom",
+	"bottom_right",
+	"bottom_left",
+	"left_bottom",
+	"left_top",
+]
 
 const BOARD_CONNECTIONS := [
 	["left_top", "center_top_left"],
@@ -103,12 +126,38 @@ func select_slot(slot_id: String) -> void:
 
 
 func place_tile(slot_id: String, tile_id: String) -> void:
+	place_tile_for_owner(slot_id, tile_id, PLAYER_HOST)
+
+
+func place_tile_for_owner(slot_id: String, tile_id: String, owner_id: String) -> Dictionary:
 	if not slot_index_by_id.has(slot_id):
-		return
+		return {"ok": false, "message": "Unknown board point."}
+	if not tile_index_by_id.has(tile_id):
+		return {"ok": false, "message": "Unknown tile."}
+
+	var slot := board_slots[int(slot_index_by_id[slot_id])]
+	if not String(slot["placed_tile_id"]).is_empty():
+		return {"ok": false, "message": "%s is already occupied." % String(slot["name"])}
 
 	selected_slot_id = slot_id
-	board_slots[int(slot_index_by_id[slot_id])]["placed_tile_id"] = tile_id
+	slot["placed_tile_id"] = tile_id
+	slot["owner_id"] = owner_id
+	board_slots[int(slot_index_by_id[slot_id])] = slot
+	_evaluate_board_state()
 	_refresh_visuals()
+
+	var result := {
+		"ok": true,
+		"slot_id": slot_id,
+		"tile_id": tile_id,
+		"owner_id": owner_id,
+		"life_state": String(slot["life_state"]),
+		"bloom": bool(slot["bloom"]),
+		"harmony_win": _has_harmony_circle(),
+		"host_blooms": _count_blooming_flowers(PLAYER_HOST),
+		"guest_blooms": _count_blooming_flowers(PLAYER_GUEST),
+	}
+	return result
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -141,6 +190,10 @@ func _build_slot_data() -> void:
 			"role": "edge",
 			"norm": Vector2(-EDGE_THIRD, -1.0),
 			"placed_tile_id": "",
+			"owner_id": "",
+			"vitality": 0.0,
+			"life_state": "empty",
+			"bloom": false,
 		},
 		{
 			"id": "top_right",
@@ -148,6 +201,10 @@ func _build_slot_data() -> void:
 			"role": "edge",
 			"norm": Vector2(EDGE_THIRD, -1.0),
 			"placed_tile_id": "",
+			"owner_id": "",
+			"vitality": 0.0,
+			"life_state": "empty",
+			"bloom": false,
 		},
 		{
 			"id": "right_top",
@@ -155,6 +212,10 @@ func _build_slot_data() -> void:
 			"role": "edge",
 			"norm": Vector2(1.0, -EDGE_THIRD),
 			"placed_tile_id": "",
+			"owner_id": "",
+			"vitality": 0.0,
+			"life_state": "empty",
+			"bloom": false,
 		},
 		{
 			"id": "right_bottom",
@@ -162,6 +223,10 @@ func _build_slot_data() -> void:
 			"role": "edge",
 			"norm": Vector2(1.0, EDGE_THIRD),
 			"placed_tile_id": "",
+			"owner_id": "",
+			"vitality": 0.0,
+			"life_state": "empty",
+			"bloom": false,
 		},
 		{
 			"id": "bottom_right",
@@ -169,6 +234,10 @@ func _build_slot_data() -> void:
 			"role": "edge",
 			"norm": Vector2(EDGE_THIRD, 1.0),
 			"placed_tile_id": "",
+			"owner_id": "",
+			"vitality": 0.0,
+			"life_state": "empty",
+			"bloom": false,
 		},
 		{
 			"id": "bottom_left",
@@ -176,6 +245,10 @@ func _build_slot_data() -> void:
 			"role": "edge",
 			"norm": Vector2(-EDGE_THIRD, 1.0),
 			"placed_tile_id": "",
+			"owner_id": "",
+			"vitality": 0.0,
+			"life_state": "empty",
+			"bloom": false,
 		},
 		{
 			"id": "left_bottom",
@@ -183,6 +256,10 @@ func _build_slot_data() -> void:
 			"role": "edge",
 			"norm": Vector2(-1.0, EDGE_THIRD),
 			"placed_tile_id": "",
+			"owner_id": "",
+			"vitality": 0.0,
+			"life_state": "empty",
+			"bloom": false,
 		},
 		{
 			"id": "left_top",
@@ -190,6 +267,10 @@ func _build_slot_data() -> void:
 			"role": "edge",
 			"norm": Vector2(-1.0, -EDGE_THIRD),
 			"placed_tile_id": "",
+			"owner_id": "",
+			"vitality": 0.0,
+			"life_state": "empty",
+			"bloom": false,
 		},
 		{
 			"id": "center_top_left",
@@ -197,6 +278,10 @@ func _build_slot_data() -> void:
 			"role": "center",
 			"norm": Vector2(-EDGE_THIRD, -EDGE_THIRD),
 			"placed_tile_id": "",
+			"owner_id": "",
+			"vitality": 0.0,
+			"life_state": "empty",
+			"bloom": false,
 		},
 		{
 			"id": "center_top_right",
@@ -204,6 +289,10 @@ func _build_slot_data() -> void:
 			"role": "center",
 			"norm": Vector2(EDGE_THIRD, -EDGE_THIRD),
 			"placed_tile_id": "",
+			"owner_id": "",
+			"vitality": 0.0,
+			"life_state": "empty",
+			"bloom": false,
 		},
 		{
 			"id": "center_bottom_right",
@@ -211,6 +300,10 @@ func _build_slot_data() -> void:
 			"role": "center",
 			"norm": Vector2(EDGE_THIRD, EDGE_THIRD),
 			"placed_tile_id": "",
+			"owner_id": "",
+			"vitality": 0.0,
+			"life_state": "empty",
+			"bloom": false,
 		},
 		{
 			"id": "center_bottom_left",
@@ -218,6 +311,10 @@ func _build_slot_data() -> void:
 			"role": "center",
 			"norm": Vector2(-EDGE_THIRD, EDGE_THIRD),
 			"placed_tile_id": "",
+			"owner_id": "",
+			"vitality": 0.0,
+			"life_state": "empty",
+			"bloom": false,
 		},
 	]
 
@@ -332,7 +429,7 @@ func _refresh_visuals() -> void:
 	for edge in BOARD_CONNECTIONS:
 		var line := line_nodes[_edge_key(edge)] as Line2D
 		var is_focused := focus_slot_id != "" and (String(edge[0]) == focus_slot_id or String(edge[1]) == focus_slot_id)
-		line.default_color = BOARD_HIGHLIGHT_COLOR if is_focused else BOARD_LINE_COLOR
+		line.default_color = BOARD_HIGHLIGHT_COLOR if is_focused else _connection_color(String(edge[0]), String(edge[1]))
 		line.width = maxf(4.0, board_span * (0.014 if is_focused else 0.011))
 
 	for slot in board_slots:
@@ -348,7 +445,7 @@ func _refresh_visuals() -> void:
 		if not placed_tile_id.is_empty() and tile_index_by_id.has(placed_tile_id):
 			var tile := _tile_by_id(placed_tile_id)
 			fill_color = TILE_CARD_COLOR
-			border_color = Color(tile["accent"])
+			border_color = _life_color(String(slot["life_state"]))
 			glyph.visible = true
 			glyph.configure(String(tile["id"]), Color(tile["accent"]).darkened(0.72), 0.92)
 		else:
@@ -470,3 +567,237 @@ func _slot_node_key(slot_id: String) -> String:
 
 func _tile_by_id(tile_id: String) -> Dictionary:
 	return tile_defs[int(tile_index_by_id[tile_id])]
+
+
+func _evaluate_board_state() -> void:
+	for index in range(board_slots.size()):
+		var slot := board_slots[index]
+		var tile_id := String(slot["placed_tile_id"])
+		if tile_id.is_empty():
+			slot["vitality"] = 0.0
+			slot["life_state"] = "empty"
+			slot["bloom"] = false
+			board_slots[index] = slot
+			continue
+
+		var owner_id := String(slot["owner_id"])
+		var vitality := _tile_base_power(tile_id)
+		vitality += _support_value(slot)
+		vitality += _harmony_bonus(slot)
+		vitality += _flower_link_bonus(slot)
+		vitality -= _distance_pressure(slot, owner_id)
+
+		slot["vitality"] = vitality
+		slot["life_state"] = _life_state(vitality)
+		slot["bloom"] = FLOWER_IDS.has(tile_id) and vitality >= 1.5
+		board_slots[index] = slot
+
+
+func _distance_pressure(slot: Dictionary, owner_id: String) -> float:
+	var norm: Vector2 = slot["norm"]
+	var distance_factor := 0.5
+	if owner_id == PLAYER_HOST:
+		distance_factor = inverse_lerp(-1.0, 1.0, norm.y)
+	else:
+		distance_factor = inverse_lerp(1.0, -1.0, norm.y)
+	var role_penalty := 0.22 if String(slot["role"]) == "center" else 0.0
+	return 0.3 + distance_factor * 1.65 + role_penalty
+
+
+func _support_value(slot: Dictionary) -> float:
+	var total := 0.0
+	for neighbor in _neighbors_for_slot(String(slot["id"])):
+		var neighbor_tile_id := String(neighbor["placed_tile_id"])
+		if neighbor_tile_id.is_empty():
+			continue
+		total += _tile_support_power(neighbor_tile_id, String(slot["placed_tile_id"]))
+		if String(neighbor["owner_id"]) != String(slot["owner_id"]):
+			total += 0.12
+	return total
+
+
+func _harmony_bonus(slot: Dictionary) -> float:
+	var has_host := false
+	var has_guest := false
+	for neighbor in _neighbors_for_slot(String(slot["id"])):
+		if String(neighbor["placed_tile_id"]).is_empty():
+			continue
+		has_host = has_host or String(neighbor["owner_id"]) == PLAYER_HOST
+		has_guest = has_guest or String(neighbor["owner_id"]) == PLAYER_GUEST
+	if has_host and has_guest:
+		return 0.55
+	return 0.0
+
+
+func _flower_link_bonus(slot: Dictionary) -> float:
+	var tile_id := String(slot["placed_tile_id"])
+	if not FLOWER_IDS.has(tile_id):
+		return 0.0
+
+	var flower_neighbors := 0
+	for neighbor in _neighbors_for_slot(String(slot["id"])):
+		if FLOWER_IDS.has(String(neighbor["placed_tile_id"])):
+			flower_neighbors += 1
+	return float(flower_neighbors) * 0.22
+
+
+func _tile_base_power(tile_id: String) -> float:
+	match tile_id:
+		"lotus", "bell_flower", "lily":
+			return 1.25
+		"dharma":
+			return 1.15
+		"coin":
+			return 1.0
+		"road":
+			return 0.95
+		"sun":
+			return 1.05
+		"moon":
+			return 0.92
+		"beetle":
+			return 0.88
+		_:
+			return 0.9
+
+
+func _tile_support_power(tile_id: String, target_tile_id: String) -> float:
+	match tile_id:
+		"road":
+			return 0.35
+		"dharma":
+			return 0.6
+		"coin":
+			return 0.42
+		"sun":
+			return 0.58 if FLOWER_IDS.has(target_tile_id) else 0.2
+		"moon":
+			return 0.4
+		"beetle":
+			return 0.26
+		"lotus", "bell_flower", "lily":
+			return 0.18
+		_:
+			return 0.0
+
+
+func _life_state(vitality: float) -> String:
+	if vitality >= 1.45:
+		return "good"
+	if vitality >= 0.65:
+		return "bad"
+	return "dead"
+
+
+func _life_color(life_state: String) -> Color:
+	match life_state:
+		"good":
+			return SLOT_GOOD_COLOR
+		"dead":
+			return SLOT_DEAD_COLOR
+		"bad":
+			return SLOT_BAD_COLOR
+		_:
+			return BOARD_LINE_COLOR
+
+
+func _connection_color(slot_a_id: String, slot_b_id: String) -> Color:
+	var slot_a := _slot_by_id(slot_a_id)
+	var slot_b := _slot_by_id(slot_b_id)
+	var tile_a := String(slot_a["placed_tile_id"])
+	var tile_b := String(slot_b["placed_tile_id"])
+	if tile_a.is_empty() and tile_b.is_empty():
+		return LINE_DEAD_COLOR
+
+	var edge_energy := _edge_energy_from_slot(slot_a, slot_b_id) + _edge_energy_from_slot(slot_b, slot_a_id)
+	if not tile_a.is_empty() and not tile_b.is_empty() and String(slot_a["owner_id"]) != String(slot_b["owner_id"]):
+		edge_energy += 0.25
+	if bool(slot_a["bloom"]) or bool(slot_b["bloom"]):
+		edge_energy += 0.55
+	if String(slot_a["life_state"]) == "dead" or String(slot_b["life_state"]) == "dead":
+		edge_energy -= 1.1
+
+	if edge_energy >= 1.25:
+		return LINE_GOOD_COLOR
+	if edge_energy >= 0.2:
+		return LINE_BAD_COLOR
+	return LINE_DEAD_COLOR
+
+
+func _neighbors_for_slot(slot_id: String) -> Array[Dictionary]:
+	var neighbors: Array[Dictionary] = []
+	for edge in BOARD_CONNECTIONS:
+		if String(edge[0]) == slot_id:
+			neighbors.append(_slot_by_id(String(edge[1])))
+		elif String(edge[1]) == slot_id:
+			neighbors.append(_slot_by_id(String(edge[0])))
+	return neighbors
+
+
+func _slot_by_id(slot_id: String) -> Dictionary:
+	return board_slots[int(slot_index_by_id[slot_id])]
+
+
+func _edge_energy_from_slot(slot: Dictionary, opposite_slot_id: String) -> float:
+	var tile_id := String(slot["placed_tile_id"])
+	if tile_id.is_empty():
+		return 0.0
+
+	var total := _edge_token_energy(tile_id, bool(slot["bloom"]), String(slot["life_state"]))
+	for neighbor in _neighbors_for_slot(String(slot["id"])):
+		if String(neighbor["id"]) == opposite_slot_id:
+			continue
+		var neighbor_tile_id := String(neighbor["placed_tile_id"])
+		if neighbor_tile_id.is_empty():
+			continue
+		total += _edge_token_energy(neighbor_tile_id, bool(neighbor["bloom"]), String(neighbor["life_state"])) * 0.35
+	return total
+
+
+func _edge_token_energy(tile_id: String, bloom: bool, life_state: String) -> float:
+	var base := 0.0
+	match tile_id:
+		"road":
+			base = 0.55
+		"dharma":
+			base = 0.62
+		"sun":
+			base = 0.52
+		"coin":
+			base = 0.3
+		"moon":
+			base = 0.18
+		"beetle":
+			base = -0.08
+		"lotus", "bell_flower", "lily":
+			base = 0.45 if bloom else 0.18
+		_:
+			base = 0.12
+
+	if life_state == "good":
+		base += 0.18
+	elif life_state == "dead":
+		base -= 0.42
+	return base
+
+
+func _count_blooming_flowers(owner_id: String) -> int:
+	var total := 0
+	for slot in board_slots:
+		if String(slot["owner_id"]) == owner_id and bool(slot["bloom"]):
+			total += 1
+	return total
+
+
+func _has_harmony_circle() -> bool:
+	var has_host := false
+	var has_guest := false
+	for slot_id in EDGE_RING:
+		var slot := _slot_by_id(slot_id)
+		if not bool(slot["bloom"]):
+			return false
+		if not FLOWER_IDS.has(String(slot["placed_tile_id"])):
+			return false
+		has_host = has_host or String(slot["owner_id"]) == PLAYER_HOST
+		has_guest = has_guest or String(slot["owner_id"]) == PLAYER_GUEST
+	return has_host and has_guest
