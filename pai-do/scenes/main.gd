@@ -455,9 +455,9 @@ func _on_board_slot_activated(slot_id: String) -> void:
 			_set_turn_text("Move cancelled. %s" % _turn_prompt())
 			_set_interaction_text(_default_interaction_text())
 			return
-		placement = board_view.move_tile_for_owner(moving_from_slot_id, slot_id, current_player_id)
+		placement = board_view.move_tile_for_owner(moving_from_slot_id, slot_id, current_player_id, _current_round())
 	else:
-		placement = board_view.place_tile_for_owner(slot_id, selected_tile_id, current_player_id)
+		placement = board_view.place_tile_for_owner(slot_id, selected_tile_id, current_player_id, _current_round())
 	if not bool(placement["ok"]):
 		_log_turn("placement_rejected", {
 			"slot_id": slot_id,
@@ -995,18 +995,22 @@ func _turn_prompt() -> String:
 	return "Turn %d. %s tends the garden." % [turn_count, _player_name(current_player_id)]
 
 
+func _current_round() -> int:
+	return int((turn_count + 1) / 2)
+
+
 func _goal_text() -> String:
 	return "On your turn, place a tile or move one of your own tiles. Each player only has one of each tile. Work together to make all 8 outer garden points bloom. If the full ring blooms with flowers from both players, both players win."
 
 
 func _default_interaction_text() -> String:
-	return "Flowers grow stronger from connected flowers and from Sun, Moon, and Dharma. Two adjacent Coin/Road/Beetle rust a flower, three kill it. Dead tiles return to their player at end of turn."
+	return "Flowers grow stronger from connected flowers and from Sun, Moon, and Dharma. Two adjacent Coin/Road/Beetle rust a flower, three kill it, but a flower cannot die in the round it entered play. A round ends after both players act. Dead tiles return to their player at end of turn."
 
 
 func _interaction_text_for_tile(tile_id: String) -> String:
 	match tile_id:
 		"lotus", "bell_flower", "lily":
-			return "Flower tile: it grows stronger with connected flowers and with Sun, Moon, and Dharma. Two adjacent Coin, Road, or Beetle rust it; three kill it."
+			return "Flower tile: it grows stronger with connected flowers and with Sun, Moon, and Dharma. Two adjacent Coin, Road, or Beetle rust it; three kill it, but it cannot die in the round it entered play."
 		"road":
 			return "Road: a harsh structure tile. It can help shape links, but Sun, Moon, and Dharma weaken it, and too many harsh tiles around flowers will rust or kill them."
 		"dharma":
@@ -1062,6 +1066,7 @@ func _log_turn(event_name: String, extra := {}) -> void:
 		"event": event_name,
 		"current_player_id": current_player_id,
 		"turn_count": turn_count,
+		"round_count": _current_round(),
 		"selected_tile_id": selected_tile_id,
 		"moving_from_slot_id": moving_from_slot_id,
 		"sheet_state": sheet_state,

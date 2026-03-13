@@ -169,15 +169,15 @@ func cancel_slot_press(slot_id: String) -> void:
 		button.set_pressed_no_signal(false)
 
 
-func place_tile(slot_id: String, tile_id: String) -> void:
-	place_tile_for_owner(slot_id, tile_id, PLAYER_HOST)
+func place_tile(slot_id: String, tile_id: String, round_count: int = 1) -> void:
+	place_tile_for_owner(slot_id, tile_id, PLAYER_HOST, round_count)
 
 
-func place_tile_for_owner(slot_id: String, tile_id: String, owner_id: String) -> Dictionary:
-	return _resolve_tile_action("", slot_id, tile_id, owner_id)
+func place_tile_for_owner(slot_id: String, tile_id: String, owner_id: String, round_count: int = 1) -> Dictionary:
+	return _resolve_tile_action("", slot_id, tile_id, owner_id, round_count)
 
 
-func move_tile_for_owner(from_slot_id: String, to_slot_id: String, owner_id: String) -> Dictionary:
+func move_tile_for_owner(from_slot_id: String, to_slot_id: String, owner_id: String, round_count: int = 1) -> Dictionary:
 	if not slot_index_by_id.has(from_slot_id):
 		return {"ok": false, "message": "Unknown source point."}
 	var source: Dictionary = board_slots[int(slot_index_by_id[from_slot_id])]
@@ -186,7 +186,7 @@ func move_tile_for_owner(from_slot_id: String, to_slot_id: String, owner_id: Str
 		return {"ok": false, "message": "There is no tile to move."}
 	if String(source["owner_id"]) != owner_id:
 		return {"ok": false, "message": "You can only move your own tiles."}
-	return _resolve_tile_action(from_slot_id, to_slot_id, source_tile_id, owner_id)
+	return _resolve_tile_action(from_slot_id, to_slot_id, source_tile_id, owner_id, round_count)
 
 
 func get_slot_tile_id(slot_id: String) -> String:
@@ -213,12 +213,13 @@ func is_flower_tile(tile_id: String) -> bool:
 	return FLOWER_IDS.has(tile_id)
 
 
-func _resolve_tile_action(from_slot_id: String, slot_id: String, tile_id: String, owner_id: String) -> Dictionary:
+func _resolve_tile_action(from_slot_id: String, slot_id: String, tile_id: String, owner_id: String, round_count: int) -> Dictionary:
 	_log_board("resolve_tile_action_start", {
 		"from_slot_id": from_slot_id,
 		"slot_id": slot_id,
 		"tile_id": tile_id,
 		"owner_id": owner_id,
+		"round_count": round_count,
 	})
 	if not slot_index_by_id.has(slot_id):
 		_log_board("resolve_tile_action_unknown_slot", {"slot_id": slot_id})
@@ -255,6 +256,7 @@ func _resolve_tile_action(from_slot_id: String, slot_id: String, tile_id: String
 		var source: Dictionary = board_slots[source_index]
 		source["placed_tile_id"] = ""
 		source["owner_id"] = ""
+		source["entered_round"] = 0
 		source["vitality"] = 0.0
 		source["life_state"] = "empty"
 		source["bloom"] = false
@@ -263,9 +265,10 @@ func _resolve_tile_action(from_slot_id: String, slot_id: String, tile_id: String
 	selected_slot_id = slot_id
 	slot["placed_tile_id"] = tile_id
 	slot["owner_id"] = owner_id
+	slot["entered_round"] = round_count if FLOWER_IDS.has(tile_id) else 0
 	slot["rusted"] = bool(slot.get("rusted", false)) or replaces_flower
 	board_slots[int(slot_index_by_id[slot_id])] = slot
-	_evaluate_board_state()
+	_evaluate_board_state(round_count)
 	var resolved_slot: Dictionary = board_slots[int(slot_index_by_id[slot_id])]
 	var resolved_vitality := float(resolved_slot["vitality"])
 	var resolved_life_state := String(resolved_slot["life_state"])
@@ -280,12 +283,13 @@ func _resolve_tile_action(from_slot_id: String, slot_id: String, tile_id: String
 			died_this_turn = true
 			break
 	if dead_tiles.size() > 0:
-		_evaluate_board_state()
+		_evaluate_board_state(round_count)
 	_refresh_visuals()
 	slot = board_slots[int(slot_index_by_id[slot_id])]
 
 	var result: Dictionary = {
 		"ok": true,
+		"round_count": round_count,
 		"from_slot_id": from_slot_id,
 		"slot_id": slot_id,
 		"tile_id": tile_id,
@@ -484,7 +488,10 @@ func _build_slot_data() -> void:
 	]
 
 	for index in range(board_slots.size()):
-		slot_index_by_id[String(board_slots[index]["id"])] = index
+		var slot: Dictionary = board_slots[index]
+		slot["entered_round"] = 0
+		board_slots[index] = slot
+		slot_index_by_id[String(slot["id"])] = index
 
 
 func _cache_scene_nodes() -> void:
@@ -805,11 +812,12 @@ func _tile_by_id(tile_id: String) -> Dictionary:
 	return tile_defs[int(tile_index_by_id[tile_id])]
 
 
-func _evaluate_board_state() -> void:
+func _evaluate_board_state(round_count: int = 0) -> void:
 	for index in range(board_slots.size()):
 		var slot: Dictionary = board_slots[index]
 		var tile_id := String(slot["placed_tile_id"])
 		if tile_id.is_empty():
+			slot["entered_round"] = 0
 			slot["vitality"] = 0.0
 			slot["life_state"] = "empty"
 			slot["bloom"] = false
@@ -832,10 +840,21 @@ func _evaluate_board_state() -> void:
 				slot["life_state"] = "dead"
 			elif harsh_neighbors > 1:
 				slot["life_state"] = "bad"
+			if _flower_has_round_grace(slot, round_count) and String(slot["life_state"]) == "dead":
+				slot["life_state"] = "bad"
 		if bool(slot.get("rusted", false)) and String(slot["life_state"]) == "good":
 			slot["life_state"] = "bad"
 		slot["bloom"] = FLOWER_IDS.has(tile_id) and vitality >= 1.5
 		board_slots[index] = slot
+
+
+func _flower_has_round_grace(slot: Dictionary, round_count: int) -> bool:
+	if round_count <= 0:
+		return false
+	var tile_id := String(slot["placed_tile_id"])
+	if not FLOWER_IDS.has(tile_id):
+		return false
+	return int(slot.get("entered_round", 0)) == round_count
 
 
 func _distance_pressure(slot: Dictionary, owner_id: String) -> float:
@@ -992,6 +1011,7 @@ func _collect_dead_tiles() -> Array:
 		})
 		slot["placed_tile_id"] = ""
 		slot["owner_id"] = ""
+		slot["entered_round"] = 0
 		slot["vitality"] = 0.0
 		slot["life_state"] = "empty"
 		slot["bloom"] = false
