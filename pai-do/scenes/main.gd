@@ -474,9 +474,13 @@ func _on_board_slot_activated(slot_id: String) -> void:
 	var rust_suffix: String = " The spot rusts." if bool(placement["rusted"]) else ""
 	var dead_tiles: Array = placement["dead_tiles"] if placement.has("dead_tiles") else []
 	var dead_suffix: String = _dead_tiles_suffix(dead_tiles)
+	var replaced_tile_id := String(placement.get("replaced_tile_id", ""))
+	var replaced_owner_id := String(placement.get("replaced_owner_id", ""))
 	var immediate_death_suffix := ""
 	if bool(placement.get("died_this_turn", false)):
 		immediate_death_suffix = " It withered at round end."
+	if not replaced_tile_id.is_empty() and not replaced_owner_id.is_empty():
+		board_view.play_removed_token_animation(slot_id, replaced_tile_id, replaced_owner_id)
 	if not dead_tiles.is_empty():
 		board_view.play_wither_animation(dead_tiles)
 
@@ -1011,7 +1015,7 @@ func _goal_text() -> String:
 
 
 func _default_interaction_text() -> String:
-	return "Flowers have base energy 1. Adjacent flowers and Sun, Moon, or Dharma add 1. Coin, Road, and Beetle subtract 1. Harsh tiles have base energy -1 and use the inverse rule. Flowers die below 0, harsh tiles die above 0. Dark pulsing spots will wither and return at round end."
+	return "Flowers have base energy 1. Adjacent means connected by a board line or the outer circle. Adjacent flowers and Sun, Moon, or Dharma add 1. Coin, Road, and Beetle subtract 1. Harsh tiles have base energy -1 and use the inverse rule. Flowers die below 0, harsh tiles die above 0. Dark pulsing spots will wither and return at round end."
 
 
 func _interaction_text_for_tile(tile_id: String) -> String:

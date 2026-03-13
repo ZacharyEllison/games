@@ -56,6 +56,16 @@ const EDGE_RING := [
 	"left_bottom",
 	"left_top",
 ]
+const RING_CONNECTIONS := [
+	["top_left", "top_right"],
+	["top_right", "right_top"],
+	["right_top", "right_bottom"],
+	["right_bottom", "bottom_right"],
+	["bottom_right", "bottom_left"],
+	["bottom_left", "left_bottom"],
+	["left_bottom", "left_top"],
+	["left_top", "top_left"],
+]
 
 const BOARD_CONNECTIONS := [
 	["left_top", "center_top_left"],
@@ -250,6 +260,7 @@ func _resolve_tile_action(from_slot_id: String, slot_id: String, tile_id: String
 
 	var slot: Dictionary = board_slots[int(slot_index_by_id[slot_id])]
 	var existing_tile_id := String(slot["placed_tile_id"])
+	var existing_owner_id := String(slot["owner_id"])
 	var replaces_flower := false
 	if not existing_tile_id.is_empty():
 		if FLOWER_IDS.has(existing_tile_id):
@@ -313,6 +324,7 @@ func _resolve_tile_action(from_slot_id: String, slot_id: String, tile_id: String
 		"tile_id": tile_id,
 		"owner_id": owner_id,
 		"replaced_tile_id": existing_tile_id,
+		"replaced_owner_id": existing_owner_id,
 		"rusted": bool(slot["rusted"]),
 		"dead_tiles": dead_tiles,
 		"died_this_turn": died_this_turn,
@@ -518,13 +530,18 @@ func _cache_scene_nodes() -> void:
 	slot_warning_rings.clear()
 	slot_warning_washes.clear()
 
-	for edge in BOARD_CONNECTIONS:
+	for edge in _all_connections():
 		var line_name := "Line_%s" % _edge_key(edge).replace(":", "_")
-		var line := board_canvas.get_node(line_name) as Line2D
+		var line := board_canvas.get_node_or_null(line_name) as Line2D
+		if line == null:
+			line = Line2D.new()
+			line.name = line_name
+			board_canvas.add_child(line)
 		line.default_color = BOARD_LINE_COLOR
 		line.begin_cap_mode = Line2D.LINE_CAP_ROUND
 		line.end_cap_mode = Line2D.LINE_CAP_ROUND
 		line.joint_mode = Line2D.LINE_JOINT_ROUND
+		line.closed = false
 		line_nodes[_edge_key(edge)] = line
 
 	for slot in board_slots:
@@ -598,12 +615,10 @@ func _layout_board() -> void:
 		var point: Vector2 = board_center + local_point.rotated(BOARD_ROTATION)
 		slot_positions[slot_id] = point
 
-	for edge in BOARD_CONNECTIONS:
+	for edge in _all_connections():
 		var line := line_nodes[_edge_key(edge)] as Line2D
-		var start: Vector2 = slot_positions[String(edge[0])]
-		var end: Vector2 = slot_positions[String(edge[1])]
 		line.width = maxf(4.0, board_span * 0.011)
-		line.points = PackedVector2Array([start, end])
+		line.points = _connection_points(edge)
 
 	for slot in board_slots:
 		var slot_id := String(slot["id"])
@@ -624,7 +639,7 @@ func _refresh_visuals() -> void:
 	if focus_slot_id.is_empty():
 		focus_slot_id = hover_slot_id if not hover_slot_id.is_empty() else selected_slot_id
 
-	for edge in BOARD_CONNECTIONS:
+	for edge in _all_connections():
 		var line := line_nodes[_edge_key(edge)] as Line2D
 		var is_focused := focus_slot_id != "" and (String(edge[0]) == focus_slot_id or String(edge[1]) == focus_slot_id)
 		line.default_color = BOARD_HIGHLIGHT_COLOR if is_focused else _connection_color(String(edge[0]), String(edge[1]))
@@ -749,10 +764,8 @@ func _find_slot_for_point(point: Vector2) -> String:
 	var line_threshold := clampf(board_span * 0.052, 20.0, 34.0)
 	var snap_threshold := clampf(board_span * 0.22, 86.0, 132.0)
 	var nearest_line_distance := INF
-	for edge in BOARD_CONNECTIONS:
-		var start: Vector2 = slot_positions[String(edge[0])]
-		var end: Vector2 = slot_positions[String(edge[1])]
-		nearest_line_distance = minf(nearest_line_distance, _distance_to_segment(point, start, end))
+	for edge in _all_connections():
+		nearest_line_distance = minf(nearest_line_distance, _distance_to_polyline(point, _connection_points(edge)))
 
 	if nearest_line_distance <= line_threshold and nearest_slot_distance <= snap_threshold:
 		return nearest_slot_id
@@ -788,6 +801,18 @@ func _distance_to_segment(point: Vector2, start: Vector2, end: Vector2) -> float
 	var t := clampf((point - start).dot(segment) / length_squared, 0.0, 1.0)
 	var projection := start + segment * t
 	return point.distance_to(projection)
+
+
+func _distance_to_polyline(point: Vector2, points: PackedVector2Array) -> float:
+	if points.size() < 2:
+		return INF
+	var nearest_distance := INF
+	for point_index in range(points.size() - 1):
+		nearest_distance = minf(
+			nearest_distance,
+			_distance_to_segment(point, points[point_index], points[point_index + 1])
+		)
+	return nearest_distance
 
 
 func _event_position(event: InputEvent) -> Vector2:
@@ -836,6 +861,64 @@ func _make_ring_style(border_color: Color, border_width: int) -> StyleBoxFlat:
 	return style
 
 
+func _all_connections() -> Array:
+	var all_connections: Array = []
+	all_connections.append_array(BOARD_CONNECTIONS)
+	all_connections.append_array(RING_CONNECTIONS)
+	return all_connections
+
+
+func _connection_points(edge: Array) -> PackedVector2Array:
+	var start_slot_id := String(edge[0])
+	var end_slot_id := String(edge[1])
+	if _is_ring_connection(start_slot_id, end_slot_id):
+		return _ring_connection_points(start_slot_id, end_slot_id)
+	return PackedVector2Array([
+		slot_positions[start_slot_id],
+		slot_positions[end_slot_id],
+	])
+
+
+func _is_ring_connection(start_slot_id: String, end_slot_id: String) -> bool:
+	for edge in RING_CONNECTIONS:
+		var edge_start := String(edge[0])
+		var edge_end := String(edge[1])
+		if (edge_start == start_slot_id and edge_end == end_slot_id) or (edge_start == end_slot_id and edge_end == start_slot_id):
+			return true
+	return false
+
+
+func _ring_connection_points(start_slot_id: String, end_slot_id: String) -> PackedVector2Array:
+	var start_index := EDGE_RING.find(start_slot_id)
+	var end_index := EDGE_RING.find(end_slot_id)
+	if start_index == -1 or end_index == -1:
+		return PackedVector2Array([slot_positions[start_slot_id], slot_positions[end_slot_id]])
+
+	var step := 0
+	if (start_index + 1) % EDGE_RING.size() == end_index:
+		step = 1
+	elif (start_index - 1 + EDGE_RING.size()) % EDGE_RING.size() == end_index:
+		step = -1
+	if step == 0:
+		return PackedVector2Array([slot_positions[start_slot_id], slot_positions[end_slot_id]])
+
+	var start_angle: float = (slot_positions[start_slot_id] - board_center).angle()
+	var end_angle: float = (slot_positions[end_slot_id] - board_center).angle()
+	var delta: float = end_angle - start_angle
+	if step > 0 and delta < 0.0:
+		delta += TAU
+	elif step < 0 and delta > 0.0:
+		delta -= TAU
+
+	var point_total := 10
+	var points := PackedVector2Array()
+	for point_index in range(point_total + 1):
+		var t := float(point_index) / float(point_total)
+		var angle: float = start_angle + delta * t
+		points.append(board_center + Vector2.RIGHT.rotated(angle) * board_circle_radius)
+	return points
+
+
 func _edge_key(edge: Array) -> String:
 	return "%s:%s" % [String(edge[0]), String(edge[1])]
 
@@ -862,6 +945,10 @@ func play_wither_animation(dead_tiles: Array) -> void:
 				String(dead_tile.get("tile_id", "")),
 				String(dead_tile.get("owner_id", ""))
 			)
+
+
+func play_removed_token_animation(slot_id: String, tile_id: String, owner_id: String) -> void:
+	_spawn_wither_effect(slot_id, tile_id, owner_id)
 
 
 func _evaluate_board_state(round_count: int = 0) -> void:
@@ -1052,7 +1139,7 @@ func _connection_color(slot_a_id: String, slot_b_id: String) -> Color:
 
 func _neighbors_for_slot(slot_id: String) -> Array[Dictionary]:
 	var neighbors: Array[Dictionary] = []
-	for edge in BOARD_CONNECTIONS:
+	for edge in _all_connections():
 		if String(edge[0]) == slot_id:
 			neighbors.append(_slot_by_id(String(edge[1])))
 		elif String(edge[1]) == slot_id:
@@ -1197,17 +1284,29 @@ func _spawn_wither_effect(slot_id: String, tile_id: String, owner_id: String) ->
 	var accent := TEXT_COLOR
 	if tile_index_by_id.has(tile_id):
 		accent = Color(_tile_by_id(tile_id)["accent"])
+	var owner_anchor := _owner_return_anchor(owner_id)
+	var slot_center: Vector2 = slot_positions[slot_id]
+	var return_direction := owner_anchor - slot_center
+	if return_direction.length_squared() <= 0.001:
+		return_direction = Vector2.UP if owner_id == PLAYER_HOST else Vector2.DOWN
+	return_direction = return_direction.normalized()
+	var slot_still_occupied := false
+	if slot_index_by_id.has(slot_id):
+		slot_still_occupied = not String(_slot_by_id(slot_id)["placed_tile_id"]).is_empty()
+	var effect_scale := 0.74 if slot_still_occupied else 1.0
+	var effect_size := slot_button_size * effect_scale
+	var start_offset := return_direction * (slot_button_size * 0.22 if slot_still_occupied else 0.0)
 
 	var effect_root := Control.new()
 	effect_root.name = "WitherEffect_%s" % slot_id
 	effect_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	effect_root.size = Vector2.ONE * slot_button_size
-	effect_root.position = slot_positions[slot_id] - effect_root.size * 0.5
+	effect_root.size = Vector2.ONE * effect_size
+	effect_root.position = slot_center + start_offset - effect_root.size * 0.5
 	effect_root.pivot_offset = effect_root.size * 0.5
-	effect_root.modulate = Color(1.0, 1.0, 1.0, 0.96)
+	effect_root.modulate = Color(1.0, 1.0, 1.0, 0.88 if slot_still_occupied else 0.96)
 	wither_effect_layer.add_child(effect_root)
 
-	var ring_margin := clampf(slot_button_size * 0.16, 8.0, 13.0)
+	var ring_margin := clampf(effect_size * 0.16, 7.0, 13.0)
 	var ring := Panel.new()
 	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1225,7 +1324,7 @@ func _spawn_wither_effect(slot_id: String, tile_id: String, owner_id: String) ->
 	card.add_theme_stylebox_override("panel", _make_round_style(TILE_CARD_COLOR, SLOT_DEAD_COLOR, 3))
 	effect_root.add_child(card)
 
-	var wash_inset := clampf(slot_button_size * 0.08, 4.0, 7.0)
+	var wash_inset := clampf(effect_size * 0.08, 4.0, 7.0)
 	var wash := Panel.new()
 	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1237,7 +1336,7 @@ func _spawn_wither_effect(slot_id: String, tile_id: String, owner_id: String) ->
 	card.add_child(wash)
 
 	var glyph := TOKEN_GLYPH_SCENE.instantiate() as TokenGlyph
-	var glyph_inset := roundf(slot_button_size * 0.13)
+	var glyph_inset := roundf(effect_size * 0.13)
 	glyph.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	glyph.offset_left = glyph_inset
 	glyph.offset_top = glyph_inset
@@ -1252,22 +1351,29 @@ func _spawn_wither_effect(slot_id: String, tile_id: String, owner_id: String) ->
 	)
 	card.add_child(glyph)
 
-	var direction := -1.0 if slot_positions[slot_id].x <= board_center.x else 1.0
-	if absf(slot_positions[slot_id].x - board_center.x) <= slot_button_size * 0.12:
-		direction = -1.0 if slot_positions[slot_id].y < board_center.y else 1.0
-	var end_position := effect_root.position + Vector2(direction * slot_button_size * 0.18, slot_button_size * 0.12)
+	var travel_distance := maxf(slot_button_size * 1.45, board_span * 0.2)
+	var end_position := effect_root.position + return_direction * travel_distance
 
 	var tween := create_tween()
 	tween.tween_property(effect_root, "scale", Vector2.ONE * 1.06, 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(ring, "scale", Vector2.ONE * 1.14, 0.09).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(wash, "modulate", Color(1.0, 1.0, 1.0, 0.58), 0.09).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tween.chain().tween_property(effect_root, "scale", Vector2.ONE * 0.54, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	tween.parallel().tween_property(effect_root, "rotation", direction * 0.22, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(effect_root, "rotation", return_direction.x * 0.18, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tween.parallel().tween_property(effect_root, "position", end_position, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tween.parallel().tween_property(effect_root, "modulate", Color(0.42, 0.31, 0.25, 0.0), 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tween.parallel().tween_property(ring, "scale", Vector2.ONE * 1.34, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(ring, "modulate", Color(1.0, 1.0, 1.0, 0.0), 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.finished.connect(effect_root.queue_free)
+
+
+func _owner_return_anchor(owner_id: String) -> Vector2:
+	var vertical_margin := maxf(slot_button_size * 0.9, board_span * 0.08)
+	if owner_id == PLAYER_HOST:
+		return Vector2(board_center.x, -vertical_margin)
+	if owner_id == PLAYER_GUEST:
+		return Vector2(board_center.x, size.y + vertical_margin)
+	return board_center
 
 
 func _edge_energy_from_slot(slot: Dictionary, opposite_slot_id: String) -> float:
