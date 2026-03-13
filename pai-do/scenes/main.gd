@@ -7,6 +7,7 @@ const PLAYER_HOST := "host"
 const PLAYER_GUEST := "guest"
 const TOKEN_GLYPH_SCENE := preload("res://scenes/token_glyph.tscn")
 const TOKEN_DRAG_THRESHOLD := 18.0
+const DEBUG_TURN_LOGS := true
 
 const BACKGROUND_COLOR := Color("f7f0e4")
 const BOARD_CIRCLE_COLOR := Color("9f8b5b")
@@ -94,6 +95,7 @@ func _ready() -> void:
 	_set_objective_text(_goal_text())
 	_set_turn_text(_turn_prompt())
 	_set_interaction_text(_default_interaction_text())
+	_log_turn("ready", {"turn_prompt": _turn_prompt()})
 
 
 func _process(delta: float) -> void:
@@ -361,8 +363,13 @@ func _refresh_tile_buttons() -> void:
 
 func _begin_tile_selection(tile_id: String, dragging := false) -> bool:
 	if game_over:
+		_log_turn("begin_tile_selection_blocked_game_over", {"tile_id": tile_id})
 		return false
 	if not _tile_available_for_current_player(tile_id):
+		_log_turn("begin_tile_selection_blocked_unavailable", {
+			"tile_id": tile_id,
+			"owner_count": board_view.count_tiles_for_owner(tile_id, current_player_id),
+		})
 		_set_turn_text("%s has already placed %s. Each player only has one of each tile." % [
 			_player_name(current_player_id),
 			String(_tile_by_id(tile_id)["name"]),
@@ -379,6 +386,7 @@ func _begin_tile_selection(tile_id: String, dragging := false) -> bool:
 		"Drag or tap a board point to place it." if dragging else "Tap a board point to place it.",
 	])
 	_set_interaction_text(_interaction_text_for_tile(tile_id))
+	_log_turn("begin_tile_selection", {"tile_id": tile_id, "dragging": dragging})
 	return true
 
 
@@ -386,6 +394,11 @@ func _begin_move_selection(slot_id: String, dragging := false) -> bool:
 	var slot_tile_id := board_view.get_slot_tile_id(slot_id)
 	var slot_owner_id := board_view.get_slot_owner_id(slot_id)
 	if slot_tile_id.is_empty() or slot_owner_id != current_player_id:
+		_log_turn("begin_move_selection_rejected", {
+			"slot_id": slot_id,
+			"slot_tile_id": slot_tile_id,
+			"slot_owner_id": slot_owner_id,
+		})
 		return false
 
 	moving_from_slot_id = slot_id
@@ -399,15 +412,27 @@ func _begin_move_selection(slot_id: String, dragging := false) -> bool:
 		"Drop it on a destination point." if dragging else "Tap a destination point.",
 	])
 	_set_interaction_text("Move action: you can move one of your own tiles. Non-flowers can move onto flowers and rust that spot.")
+	_log_turn("begin_move_selection", {
+		"slot_id": slot_id,
+		"tile_id": selected_tile_id,
+		"dragging": dragging,
+	})
 	return true
 
 
 func _on_tile_pressed(tile_id: String) -> void:
+	_log_turn("tile_button_pressed", {"tile_id": tile_id})
 	_begin_tile_selection(tile_id)
 
 
 func _on_board_slot_activated(slot_id: String) -> void:
+	_log_turn("board_slot_activated", {
+		"slot_id": slot_id,
+		"slot_tile_id": board_view.get_slot_tile_id(slot_id),
+		"slot_owner_id": board_view.get_slot_owner_id(slot_id),
+	})
 	if game_over:
+		_log_turn("board_slot_activated_ignored_game_over", {"slot_id": slot_id})
 		return
 	if selected_tile_id.is_empty():
 		if _begin_move_selection(slot_id):
@@ -434,14 +459,23 @@ func _on_board_slot_activated(slot_id: String) -> void:
 	else:
 		placement = board_view.place_tile_for_owner(slot_id, selected_tile_id, current_player_id)
 	if not bool(placement["ok"]):
+		_log_turn("placement_rejected", {
+			"slot_id": slot_id,
+			"message": String(placement["message"]),
+			"moving": not moving_from_slot_id.is_empty(),
+		})
 		_set_turn_text(String(placement["message"]))
 		return
+	_log_turn("placement_accepted", placement)
 
 	var state_label: String = _state_label(String(placement["life_state"]))
 	var bloom_suffix: String = " It blooms." if bool(placement["bloom"]) else ""
 	var rust_suffix: String = " The spot rusts." if bool(placement["rusted"]) else ""
 	var dead_tiles: Array = placement["dead_tiles"] if placement.has("dead_tiles") else []
 	var dead_suffix: String = _dead_tiles_suffix(dead_tiles)
+	var immediate_death_suffix := ""
+	if bool(placement.get("died_this_turn", false)):
+		immediate_death_suffix = " It withered immediately."
 
 	if bool(placement["harmony_win"]):
 		game_over = true
@@ -461,7 +495,7 @@ func _on_board_slot_activated(slot_id: String) -> void:
 		_player_name(String(placement["owner_id"])),
 		action_text,
 		state_label,
-		bloom_suffix,
+		bloom_suffix + immediate_death_suffix,
 		rust_suffix + dead_suffix,
 		_turn_prompt(),
 	])
@@ -470,14 +504,24 @@ func _on_board_slot_activated(slot_id: String) -> void:
 
 func _on_tile_button_gui_input(event: InputEvent, tile_id: String) -> void:
 	if game_over or rules_modal.visible:
+		_log_turn("tile_button_gui_input_ignored", {
+			"tile_id": tile_id,
+			"game_over": game_over,
+			"rules_visible": rules_modal.visible,
+		})
 		return
 	if not _is_pointer_pressed(event):
 		return
 	if not _tile_available_for_current_player(tile_id):
+		_log_turn("tile_button_gui_input_unavailable", {
+			"tile_id": tile_id,
+			"owner_count": board_view.count_tiles_for_owner(tile_id, current_player_id),
+		})
 		return
 
 	var button := tile_buttons[tile_id] as Button
 	if button == null:
+		_log_turn("tile_button_gui_input_missing_button", {"tile_id": tile_id})
 		return
 	_stage_token_drag(
 		"drawer",
@@ -492,10 +536,20 @@ func _on_tile_button_gui_input(event: InputEvent, tile_id: String) -> void:
 
 func _on_board_slot_gui_input(slot_id: String, event: InputEvent, global_position: Vector2) -> void:
 	if game_over or rules_modal.visible:
+		_log_turn("board_slot_gui_input_ignored", {
+			"slot_id": slot_id,
+			"game_over": game_over,
+			"rules_visible": rules_modal.visible,
+		})
 		return
 	if not _is_pointer_pressed(event):
 		return
 	if board_view.get_slot_tile_id(slot_id).is_empty() or board_view.get_slot_owner_id(slot_id) != current_player_id:
+		_log_turn("board_slot_gui_input_rejected", {
+			"slot_id": slot_id,
+			"slot_tile_id": board_view.get_slot_tile_id(slot_id),
+			"slot_owner_id": board_view.get_slot_owner_id(slot_id),
+		})
 		return
 
 	_stage_token_drag(
@@ -511,8 +565,15 @@ func _on_board_slot_gui_input(slot_id: String, event: InputEvent, global_positio
 
 func _stage_token_drag(source_kind: String, tile_id: String, from_slot_id: String, source_button: Button, pointer_position: Vector2, pointer_kind: String, pointer_index: int) -> void:
 	if pointer_kind.is_empty():
+		_log_turn("stage_token_drag_rejected_pointer_kind", {"source_kind": source_kind, "tile_id": tile_id})
 		return
 	if token_drag_pending or token_drag_active:
+		_log_turn("stage_token_drag_rejected_busy", {
+			"source_kind": source_kind,
+			"tile_id": tile_id,
+			"pending": token_drag_pending,
+			"active": token_drag_active,
+		})
 		return
 
 	token_drag_pending = true
@@ -524,6 +585,13 @@ func _stage_token_drag(source_kind: String, tile_id: String, from_slot_id: Strin
 	token_drag_source_button = source_button
 	token_drag_start_position = pointer_position
 	token_drag_pointer_position = pointer_position
+	_log_turn("stage_token_drag", {
+		"source_kind": source_kind,
+		"tile_id": tile_id,
+		"from_slot_id": from_slot_id,
+		"pointer_kind": pointer_kind,
+		"pointer_index": pointer_index,
+	})
 
 
 func _start_token_drag() -> void:
@@ -539,6 +607,11 @@ func _start_token_drag() -> void:
 		_cancel_button_press(token_drag_source_button)
 
 	if not started:
+		_log_turn("start_token_drag_failed", {
+			"source_kind": token_drag_source_kind,
+			"tile_id": token_drag_tile_id,
+			"from_slot_id": token_drag_from_slot_id,
+		})
 		_reset_token_drag_state()
 		return
 
@@ -546,6 +619,11 @@ func _start_token_drag() -> void:
 	token_drag_active = true
 	_show_token_drag_preview(token_drag_tile_id)
 	_update_token_drag()
+	_log_turn("start_token_drag", {
+		"source_kind": token_drag_source_kind,
+		"tile_id": token_drag_tile_id,
+		"from_slot_id": token_drag_from_slot_id,
+	})
 
 
 func _update_token_drag() -> void:
@@ -561,6 +639,12 @@ func _update_token_drag() -> void:
 func _finish_token_drag() -> void:
 	var target_slot_id := board_view.slot_id_at_global_point(token_drag_pointer_position)
 	board_view.clear_drag_hover_slot()
+	_log_turn("finish_token_drag", {
+		"source_kind": token_drag_source_kind,
+		"tile_id": token_drag_tile_id,
+		"from_slot_id": token_drag_from_slot_id,
+		"target_slot_id": target_slot_id,
+	})
 	if target_slot_id.is_empty():
 		_set_turn_text(_drag_release_prompt())
 		return
@@ -897,8 +981,14 @@ func _tile_node_key(tile_id: String) -> String:
 
 
 func _advance_turn() -> void:
+	var previous_player_id := current_player_id
 	turn_count += 1
 	current_player_id = PLAYER_GUEST if current_player_id == PLAYER_HOST else PLAYER_HOST
+	_log_turn("advance_turn", {
+		"previous_player_id": previous_player_id,
+		"next_player_id": current_player_id,
+		"turn_count": turn_count,
+	})
 
 
 func _turn_prompt() -> String:
@@ -963,3 +1053,20 @@ func _state_label(life_state: String) -> String:
 			return "dead"
 		_:
 			return "rust"
+
+
+func _log_turn(event_name: String, extra := {}) -> void:
+	if not DEBUG_TURN_LOGS:
+		return
+	var payload := {
+		"event": event_name,
+		"current_player_id": current_player_id,
+		"turn_count": turn_count,
+		"selected_tile_id": selected_tile_id,
+		"moving_from_slot_id": moving_from_slot_id,
+		"sheet_state": sheet_state,
+	}
+	if extra is Dictionary:
+		for key in extra.keys():
+			payload[key] = extra[key]
+	print("[pai-do][turn] %s" % JSON.stringify(payload))

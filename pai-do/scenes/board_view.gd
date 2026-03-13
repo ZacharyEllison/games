@@ -4,6 +4,7 @@ extends Control
 
 signal slot_activated(slot_id: String)
 signal slot_gui_input(slot_id: String, event: InputEvent, global_position: Vector2)
+const DEBUG_BOARD_LOGS := true
 
 const BOARD_ROTATION := PI / 4.0
 const EDGE_THIRD := 1.0 / 3.0
@@ -213,11 +214,20 @@ func is_flower_tile(tile_id: String) -> bool:
 
 
 func _resolve_tile_action(from_slot_id: String, slot_id: String, tile_id: String, owner_id: String) -> Dictionary:
+	_log_board("resolve_tile_action_start", {
+		"from_slot_id": from_slot_id,
+		"slot_id": slot_id,
+		"tile_id": tile_id,
+		"owner_id": owner_id,
+	})
 	if not slot_index_by_id.has(slot_id):
+		_log_board("resolve_tile_action_unknown_slot", {"slot_id": slot_id})
 		return {"ok": false, "message": "Unknown board point."}
 	if not tile_index_by_id.has(tile_id):
+		_log_board("resolve_tile_action_unknown_tile", {"tile_id": tile_id})
 		return {"ok": false, "message": "Unknown tile."}
 	if not from_slot_id.is_empty() and from_slot_id == slot_id:
+		_log_board("resolve_tile_action_same_slot", {"slot_id": slot_id})
 		return {"ok": false, "message": "Pick a different point to move the tile."}
 
 	var slot: Dictionary = board_slots[int(slot_index_by_id[slot_id])]
@@ -226,9 +236,18 @@ func _resolve_tile_action(from_slot_id: String, slot_id: String, tile_id: String
 	if not existing_tile_id.is_empty():
 		if FLOWER_IDS.has(existing_tile_id):
 			if FLOWER_IDS.has(tile_id):
+				_log_board("resolve_tile_action_flower_on_flower", {
+					"slot_id": slot_id,
+					"existing_tile_id": existing_tile_id,
+					"tile_id": tile_id,
+				})
 				return {"ok": false, "message": "Flowers cannot be placed on flowers."}
 			replaces_flower = true
 		else:
+			_log_board("resolve_tile_action_occupied", {
+				"slot_id": slot_id,
+				"existing_tile_id": existing_tile_id,
+			})
 			return {"ok": false, "message": "%s is already occupied." % String(slot["name"])}
 
 	if not from_slot_id.is_empty():
@@ -247,7 +266,19 @@ func _resolve_tile_action(from_slot_id: String, slot_id: String, tile_id: String
 	slot["rusted"] = bool(slot.get("rusted", false)) or replaces_flower
 	board_slots[int(slot_index_by_id[slot_id])] = slot
 	_evaluate_board_state()
+	var resolved_slot: Dictionary = board_slots[int(slot_index_by_id[slot_id])]
+	var resolved_vitality := float(resolved_slot["vitality"])
+	var resolved_life_state := String(resolved_slot["life_state"])
+	var resolved_bloom := bool(resolved_slot["bloom"])
+	var resolved_support := _support_value(resolved_slot)
+	var resolved_harmony := _harmony_bonus(resolved_slot)
+	var resolved_pressure := _distance_pressure(resolved_slot, owner_id)
 	var dead_tiles: Array = _collect_dead_tiles()
+	var died_this_turn := false
+	for dead_tile in dead_tiles:
+		if dead_tile is Dictionary and String(dead_tile["slot_id"]) == slot_id and String(dead_tile["tile_id"]) == tile_id:
+			died_this_turn = true
+			break
 	if dead_tiles.size() > 0:
 		_evaluate_board_state()
 	_refresh_visuals()
@@ -262,12 +293,19 @@ func _resolve_tile_action(from_slot_id: String, slot_id: String, tile_id: String
 		"replaced_tile_id": existing_tile_id,
 		"rusted": bool(slot["rusted"]),
 		"dead_tiles": dead_tiles,
-		"life_state": String(slot["life_state"]),
-		"bloom": bool(slot["bloom"]),
+		"died_this_turn": died_this_turn,
+		"life_state": resolved_life_state,
+		"bloom": resolved_bloom,
+		"vitality": resolved_vitality,
+		"support_value": resolved_support,
+		"harmony_bonus": resolved_harmony,
+		"distance_pressure": resolved_pressure,
+		"final_life_state": String(slot["life_state"]),
 		"harmony_win": _has_harmony_circle(),
 		"host_blooms": _count_blooming_flowers(PLAYER_HOST),
 		"guest_blooms": _count_blooming_flowers(PLAYER_GUEST),
 	}
+	_log_board("resolve_tile_action_success", result)
 	return result
 
 
@@ -280,6 +318,8 @@ func _gui_input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventScreenTouch and event.pressed:
+		if not _find_direct_slot_for_point(event.position).is_empty():
+			return
 		var touch_slot := _find_slot_for_point(event.position)
 		if not touch_slot.is_empty():
 			_emit_slot_activation(touch_slot)
@@ -287,6 +327,8 @@ func _gui_input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		if not _find_direct_slot_for_point(event.position).is_empty():
+			return
 		var click_slot := _find_slot_for_point(event.position)
 		if not click_slot.is_empty():
 			_emit_slot_activation(click_slot)
@@ -604,6 +646,11 @@ func _refresh_visuals() -> void:
 
 
 func _on_slot_button_pressed(slot_id: String) -> void:
+	_log_board("slot_button_pressed", {
+		"slot_id": slot_id,
+		"slot_tile_id": get_slot_tile_id(slot_id),
+		"slot_owner_id": get_slot_owner_id(slot_id),
+	})
 	_emit_slot_activation(slot_id)
 
 
@@ -639,10 +686,46 @@ func _emit_slot_activation(slot_id: String) -> void:
 		return
 	selected_slot_id = slot_id
 	_refresh_visuals()
+	_log_board("emit_slot_activation", {
+		"slot_id": slot_id,
+		"slot_tile_id": get_slot_tile_id(slot_id),
+		"slot_owner_id": get_slot_owner_id(slot_id),
+	})
 	slot_activated.emit(slot_id)
 
 
 func _find_slot_for_point(point: Vector2) -> String:
+	if slot_positions.is_empty():
+		return ""
+
+	var direct_slot_id := _find_direct_slot_for_point(point)
+	if not direct_slot_id.is_empty():
+		return direct_slot_id
+
+	var nearest_slot_id := ""
+	var nearest_slot_distance := INF
+	for slot_id in slot_positions.keys():
+		var slot_point: Vector2 = slot_positions[String(slot_id)]
+		var distance := point.distance_to(slot_point)
+		if distance < nearest_slot_distance:
+			nearest_slot_distance = distance
+			nearest_slot_id = String(slot_id)
+
+	var line_threshold := clampf(board_span * 0.052, 20.0, 34.0)
+	var snap_threshold := clampf(board_span * 0.22, 86.0, 132.0)
+	var nearest_line_distance := INF
+	for edge in BOARD_CONNECTIONS:
+		var start: Vector2 = slot_positions[String(edge[0])]
+		var end: Vector2 = slot_positions[String(edge[1])]
+		nearest_line_distance = minf(nearest_line_distance, _distance_to_segment(point, start, end))
+
+	if nearest_line_distance <= line_threshold and nearest_slot_distance <= snap_threshold:
+		return nearest_slot_id
+
+	return ""
+
+
+func _find_direct_slot_for_point(point: Vector2) -> String:
 	if slot_positions.is_empty():
 		return ""
 
@@ -658,18 +741,6 @@ func _find_slot_for_point(point: Vector2) -> String:
 	var direct_threshold := clampf(slot_button_size * 0.7, 48.0, 74.0)
 	if nearest_slot_distance <= direct_threshold:
 		return nearest_slot_id
-
-	var line_threshold := clampf(board_span * 0.052, 20.0, 34.0)
-	var snap_threshold := clampf(board_span * 0.22, 86.0, 132.0)
-	var nearest_line_distance := INF
-	for edge in BOARD_CONNECTIONS:
-		var start: Vector2 = slot_positions[String(edge[0])]
-		var end: Vector2 = slot_positions[String(edge[1])]
-		nearest_line_distance = minf(nearest_line_distance, _distance_to_segment(point, start, end))
-
-	if nearest_line_distance <= line_threshold and nearest_slot_distance <= snap_threshold:
-		return nearest_slot_id
-
 	return ""
 
 
@@ -690,6 +761,16 @@ func _event_position(event: InputEvent) -> Vector2:
 	if event is InputEventScreenTouch or event is InputEventScreenDrag:
 		return event.position
 	return Vector2.ZERO
+
+
+func _log_board(event_name: String, extra := {}) -> void:
+	if not DEBUG_BOARD_LOGS:
+		return
+	var payload := {"event": event_name}
+	if extra is Dictionary:
+		for key in extra.keys():
+			payload[key] = extra[key]
+	print("[pai-do][board] %s" % JSON.stringify(payload))
 
 
 func _slot_color(role: String) -> Color:

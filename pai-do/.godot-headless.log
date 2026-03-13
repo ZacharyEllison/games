@@ -2,3 +2,4 @@ Godot Engine v4.6.stable.official.89cea1439 - https://godotengine.org
 
 ERROR: Condition "ret != noErr" is true. Returning: ""
    at: get_system_ca_certificates (platform/macos/os_macos.mm:1014)
+[pai-do][turn] {"current_player_id":"host","event":"ready","moving_from_slot_id":"","selected_tile_id":"","sheet_state":0,"turn_count":1,"turn_prompt":"Turn 1. Host tends the garden."}
