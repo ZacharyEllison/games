@@ -1,613 +1,667 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<meta name="theme-color" content="#2e3440">
-		<title>ZELLIS Arcade</title>
-		<style>
-			:root {
-				color-scheme: light;
-				--nord0: #2e3440;
-				--nord1: #3b4252;
-				--nord2: #434c5e;
-				--nord3: #4c566a;
-				--nord4: #d8dee9;
-				--nord5: #e5e9f0;
-				--nord6: #eceff4;
-				--frost0: #8fbcbb;
-				--frost1: #88c0d0;
-				--frost2: #81a1c1;
-				--frost3: #5e81ac;
-				--aurora0: #bf616a;
-				--aurora1: #d08770;
-				--aurora2: #ebcb8b;
-				--aurora3: #a3be8c;
-				--accent: var(--frost2);
-				--accent-strong: var(--frost3);
-				--accent-rgb: 129, 161, 193;
-				--shadow-soft: 0 24px 70px rgba(46, 52, 64, 0.16);
-				--shadow-card: 0 18px 40px rgba(46, 52, 64, 0.12);
-				font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
-			}
-
-			* {
-				box-sizing: border-box;
-			}
-
-			html {
-				min-height: 100%;
-				background:
-					radial-gradient(circle at top, rgba(var(--accent-rgb), 0.22), transparent 38%),
-					linear-gradient(180deg, #f8fafc 0%, var(--nord6) 56%, #dde6f0 100%);
-			}
-
-			body {
-				margin: 0;
-				min-height: 100vh;
-				color: var(--nord0);
-				background: transparent;
-			}
-
-			body::before,
-			body::after {
-				content: "";
-				position: fixed;
-				inset: auto;
-				pointer-events: none;
-				z-index: 0;
-				filter: blur(8px);
-			}
-
-			body::before {
-				top: 5rem;
-				left: -4rem;
-				width: 18rem;
-				height: 18rem;
-				border-radius: 50%;
-				background: rgba(143, 188, 187, 0.2);
-			}
-
-			body::after {
-				right: -3rem;
-				bottom: 4rem;
-				width: 20rem;
-				height: 20rem;
-				border-radius: 38% 62% 53% 47%;
-				background: rgba(var(--accent-rgb), 0.16);
-			}
-
-			.page {
-				position: relative;
-				z-index: 1;
-				width: min(1120px, calc(100% - 2rem));
-				margin: 0 auto;
-				padding: 2rem 0 3rem;
-			}
-
-			.hero {
-				padding: clamp(1rem, 3vw, 2rem) 0 1.5rem;
-			}
-
-			.eyebrow {
-				margin: 0 0 0.6rem;
-				font-size: 0.78rem;
-				font-weight: 800;
-				letter-spacing: 0.22em;
-				text-transform: uppercase;
-				color: var(--accent-strong);
-			}
-
-			h1 {
-				margin: 0;
-				font-size: clamp(2.6rem, 7vw, 5rem);
-				line-height: 0.94;
-				letter-spacing: -0.05em;
-			}
-
-			.lede {
-				max-width: 42rem;
-				margin: 1rem 0 0;
-				font-size: clamp(1rem, 2.2vw, 1.15rem);
-				line-height: 1.6;
-				color: var(--nord3);
-			}
-
-			.layout {
-				display: grid;
-				grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.2fr);
-				gap: 1.2rem;
-				align-items: stretch;
-			}
-
-			.panel {
-				border: 1px solid rgba(94, 129, 172, 0.12);
-				border-radius: 1.75rem;
-				background: rgba(255, 255, 255, 0.74);
-				backdrop-filter: blur(18px);
-				box-shadow: var(--shadow-soft);
-			}
-
-			.game-nav {
-				padding: 1.15rem;
-			}
-
-			.game-nav-header,
-			.detail-header {
-				display: flex;
-				align-items: center;
-				justify-content: space-between;
-				gap: 1rem;
-				margin-bottom: 0.95rem;
-			}
-
-			.section-label {
-				margin: 0;
-				font-size: 1.15rem;
-				font-weight: 750;
-				letter-spacing: -0.03em;
-			}
-
-			.section-copy {
-				margin: 0;
-				font-size: 0.95rem;
-				color: var(--nord3);
-			}
-
-			.count-badge,
-			.status-badge {
-				display: inline-flex;
-				align-items: center;
-				justify-content: center;
-				padding: 0.38rem 0.72rem;
-				border-radius: 999px;
-				font-size: 0.72rem;
-				font-weight: 800;
-				letter-spacing: 0.14em;
-				text-transform: uppercase;
-			}
-
-			.count-badge {
-				color: var(--nord1);
-				background: rgba(76, 86, 106, 0.08);
-			}
-
-			.status-badge {
-				color: var(--accent-strong);
-				background: rgba(var(--accent-rgb), 0.16);
-			}
-
-			.game-buttons {
-				display: grid;
-				gap: 0.8rem;
-			}
-
-			.game-button {
-				position: relative;
-				width: 100%;
-				padding: 1rem;
-				border: 1px solid rgba(94, 129, 172, 0.1);
-				border-radius: 1.3rem;
-				background:
-					linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(236, 239, 244, 0.94)),
-					radial-gradient(circle at top right, rgba(var(--accent-rgb), 0.1), transparent 50%);
-				box-shadow: 0 8px 18px rgba(46, 52, 64, 0.06);
-				text-align: left;
-				cursor: pointer;
-				transition:
-					transform 180ms ease,
-					box-shadow 180ms ease,
-					border-color 180ms ease,
-					background 220ms ease;
-			}
-
-			.game-button:hover,
-			.game-button:focus-visible {
-				transform: translateY(-2px);
-				border-color: rgba(var(--accent-rgb), 0.42);
-				box-shadow: var(--shadow-card);
-				outline: none;
-			}
-
-			.game-button.is-selected {
-				border-color: rgba(var(--accent-rgb), 0.55);
-				background:
-					linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(var(--accent-rgb), 0.16)),
-					radial-gradient(circle at top right, rgba(var(--accent-rgb), 0.18), transparent 50%);
-				transform: translateY(-1px) scale(1.01);
-				box-shadow: 0 22px 44px rgba(46, 52, 64, 0.13);
-			}
-
-			.game-button-title {
-				margin: 0;
-				font-size: 1.12rem;
-				font-weight: 760;
-				letter-spacing: -0.03em;
-				color: var(--nord0);
-			}
-
-			.game-button-copy {
-				margin: 0.35rem 0 0;
-				font-size: 0.95rem;
-				line-height: 1.45;
-				color: var(--nord3);
-			}
-
-			.game-button-status {
-				display: inline-block;
-				margin-top: 0.85rem;
-				font-size: 0.73rem;
-				font-weight: 800;
-				letter-spacing: 0.12em;
-				text-transform: uppercase;
-				color: var(--accent-strong);
-			}
-
-			.detail-panel {
-				padding: clamp(1.2rem, 2vw, 1.5rem);
-				display: flex;
-				flex-direction: column;
-				justify-content: space-between;
-				gap: 1.2rem;
-			}
-
-			.detail-copy {
-				display: grid;
-				gap: 1rem;
-			}
-
-			.detail-title {
-				margin: 0;
-				font-size: clamp(2rem, 4vw, 3.3rem);
-				line-height: 0.98;
-				letter-spacing: -0.05em;
-			}
-
-			.accent-line {
-				width: 5.5rem;
-				height: 0.38rem;
-				border-radius: 999px;
-				background: linear-gradient(90deg, var(--accent), var(--accent-strong));
-				box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.08);
-			}
-
-			.detail-description,
-			.launch-target,
-			.detail-note {
-				margin: 0;
-				color: var(--nord3);
-				line-height: 1.65;
-				font-size: 1rem;
-			}
-
-			.launch-box {
-				padding: 1rem 1.1rem;
-				border-radius: 1.25rem;
-				background: rgba(216, 222, 233, 0.42);
-				border: 1px solid rgba(94, 129, 172, 0.1);
-			}
-
-			.launch-label {
-				margin: 0 0 0.35rem;
-				font-size: 0.74rem;
-				font-weight: 800;
-				letter-spacing: 0.14em;
-				text-transform: uppercase;
-				color: var(--nord2);
-			}
-
-			.launch-target {
-				font-family: "SFMono-Regular", Menlo, Consolas, monospace;
-				font-size: 0.92rem;
-				word-break: break-all;
-			}
-
-			.actions {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 0.8rem;
-			}
-
-			.play-link,
-			.secondary-link {
-				display: inline-flex;
-				align-items: center;
-				justify-content: center;
-				min-height: 3.25rem;
-				padding: 0.9rem 1.2rem;
-				border-radius: 999px;
-				text-decoration: none;
-				font-weight: 750;
-				letter-spacing: -0.02em;
-				transition:
-					transform 180ms ease,
-					box-shadow 180ms ease,
-					background-color 180ms ease,
-					border-color 180ms ease;
-			}
-
-			.play-link {
-				color: white;
-				background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-				box-shadow: 0 16px 32px rgba(var(--accent-rgb), 0.28);
-			}
-
-			.secondary-link {
-				color: var(--nord1);
-				background: rgba(255, 255, 255, 0.72);
-				border: 1px solid rgba(94, 129, 172, 0.12);
-			}
-
-			.play-link:hover,
-			.play-link:focus-visible,
-			.secondary-link:hover,
-			.secondary-link:focus-visible {
-				transform: translateY(-2px);
-				outline: none;
-			}
-
-			.footer-copy {
-				margin: 1rem 0 0;
-				font-size: 0.94rem;
-				color: var(--nord3);
-			}
-
-			.empty-state {
-				padding: 2rem;
-				text-align: center;
-			}
-
-			.noscript {
-				margin-top: 1rem;
-				padding: 1rem 1.1rem;
-				border-radius: 1rem;
-				background: rgba(191, 97, 106, 0.1);
-				color: var(--nord1);
-			}
-
-			@media (max-width: 860px) {
-				.page {
-					width: min(100% - 1.2rem, 1120px);
-					padding-top: 1.2rem;
-				}
-
-				.layout {
-					grid-template-columns: 1fr;
-				}
-			}
-
-			@media (prefers-reduced-motion: reduce) {
-				* {
-					scroll-behavior: auto;
-					transition: none !important;
-				}
-			}
-		</style>
-	</head>
-	<body>
-		<main class="page">
-			<header class="hero">
-				<p class="eyebrow">ZELLIS Arcade</p>
-				<h1>Pick a game.</h1>
-				<p class="lede">
-					The repo root is now a lightweight launch page. Select a build, preview its details, and jump straight into the exported web version.
-				</p>
-			</header>
-
-			<section class="layout" aria-label="Game launcher">
-				<nav class="panel game-nav" aria-labelledby="games-heading">
-					<div class="game-nav-header">
-						<div>
-							<h2 id="games-heading" class="section-label">Available builds</h2>
-							<p class="section-copy">Static root, individual game exports stay in their own folders.</p>
-						</div>
-						<span id="game-count" class="count-badge">0 Games</span>
-					</div>
-					<div id="game-buttons" class="game-buttons"></div>
-				</nav>
-
-				<section class="panel detail-panel" aria-live="polite">
-					<div class="detail-copy">
-						<div class="detail-header">
-							<p class="section-label">Launch details</p>
-							<span id="status-badge" class="status-badge">Ready</span>
-						</div>
-						<h2 id="detail-title" class="detail-title">Loading games...</h2>
-						<div class="accent-line" aria-hidden="true"></div>
-						<p id="detail-description" class="detail-description">Reading the registry of exported web builds.</p>
-						<div class="launch-box">
-							<p class="launch-label">Target</p>
-							<p id="launch-target" class="launch-target">./data/games.json</p>
-						</div>
-						<p class="detail-note">
-							Use browser back to return after launching a game. Add future entries by exporting into a folder and updating <code>data/games.json</code>.
-						</p>
-					</div>
-
-					<div class="actions">
-						<a id="play-link" class="play-link" href="./tic_tac_toe/index.html">Launch game</a>
-						<a class="secondary-link" href="./README.md">Read repo notes</a>
-					</div>
-				</section>
-			</section>
-
-			<p class="footer-copy">Responsive buttons, Nord palette, no root Godot web boot sequence.</p>
-
-			<noscript>
-				<div class="noscript">
-					JavaScript is disabled. You can still open
-					<a href="./tic_tac_toe/index.html">Tic Tac Toe</a>,
-					<a href="./flappy/index.html">Flappy</a>, or
-					<a href="./pai-do/index.html">pai-do</a>.
-				</div>
-			</noscript>
-		</main>
-
-		<script>
-			const fallbackGames = [
-				{
-					id: "tic_tac_toe",
-					title: "Tic Tac Toe",
-					description: "Classic 3x3 play with a portrait-first layout built for the browser.",
-					url: "./tic_tac_toe/index.html",
-					status: "Ready",
-					accent: "#81a1c1"
-				},
-				{
-					id: "flappy",
-					title: "Flappy",
-					description: "Tap or click to flap, hold altitude, and reset instantly for another run.",
-					url: "./flappy/index.html",
-					status: "Ready",
-					accent: "#d08770"
-				},
-				{
-					id: "pai_do",
-					title: "pai-do",
-					description: "Prototype board sandbox with a portrait-first playfield and a slide-up tile drawer.",
-					url: "./pai-do/index.html",
-					status: "Prototype",
-					accent: "#b48766"
-				}
-			];
-
-			const gameButtons = document.getElementById("game-buttons");
-			const gameCount = document.getElementById("game-count");
-			const statusBadge = document.getElementById("status-badge");
-			const detailTitle = document.getElementById("detail-title");
-			const detailDescription = document.getElementById("detail-description");
-			const launchTarget = document.getElementById("launch-target");
-			const playLink = document.getElementById("play-link");
-
-			let games = [];
-			let selectedIndex = 0;
-
-			function normalizeGames(candidate) {
-				return Array.isArray(candidate) ? candidate.filter((item) => item && typeof item === "object") : [];
-			}
-
-			function toRgb(hex) {
-				const value = String(hex || "").trim();
-				const normalized = value.startsWith("#") ? value.slice(1) : value;
-				if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
-					return "129, 161, 193";
-				}
-
-				const r = Number.parseInt(normalized.slice(0, 2), 16);
-				const g = Number.parseInt(normalized.slice(2, 4), 16);
-				const b = Number.parseInt(normalized.slice(4, 6), 16);
-				return `${r}, ${g}, ${b}`;
-			}
-
-			function setAccent(accent) {
-				const root = document.documentElement;
-				const value = accent || "#81a1c1";
-				root.style.setProperty("--accent", value);
-				root.style.setProperty("--accent-strong", value);
-				root.style.setProperty("--accent-rgb", toRgb(value));
-			}
-
-			function renderEmptyState() {
-				gameButtons.innerHTML = '<div class="panel empty-state"><p class="section-label">No games registered</p><p class="section-copy">Add entries to <code>data/games.json</code>.</p></div>';
-				gameCount.textContent = "0 Games";
-				statusBadge.textContent = "Empty";
-				detailTitle.textContent = "No game selected";
-				detailDescription.textContent = "The launcher could not find any exported game entries.";
-				launchTarget.textContent = "./data/games.json";
-				playLink.removeAttribute("href");
-				playLink.setAttribute("aria-disabled", "true");
-				playLink.style.pointerEvents = "none";
-				playLink.style.opacity = "0.55";
-				setAccent("#4c566a");
-			}
-
-			function updateSelectedGame(index) {
-				if (!games.length) {
-					renderEmptyState();
-					return;
-				}
-
-				selectedIndex = index;
-				const game = games[index];
-				setAccent(game.accent);
-				statusBadge.textContent = String(game.status || "Ready");
-				detailTitle.textContent = String(game.title || "Untitled Game");
-				detailDescription.textContent = String(game.description || "No description provided.");
-				launchTarget.textContent = String(game.url || "");
-				playLink.href = String(game.url || "#");
-				playLink.textContent = `Launch ${String(game.title || "game")}`;
-				playLink.removeAttribute("aria-disabled");
-				playLink.style.pointerEvents = "";
-				playLink.style.opacity = "";
-
-				for (const [buttonIndex, button] of gameButtons.querySelectorAll(".game-button").entries()) {
-					button.classList.toggle("is-selected", buttonIndex === index);
-					button.setAttribute("aria-pressed", buttonIndex === index ? "true" : "false");
-				}
-
-				const nextHash = `#${game.id || index}`;
-				if (window.location.hash !== nextHash) {
-					history.replaceState(null, "", nextHash);
-				}
-			}
-
-			function renderGames() {
-				if (!games.length) {
-					renderEmptyState();
-					return;
-				}
-
-				gameButtons.replaceChildren();
-				gameCount.textContent = `${games.length} Game${games.length === 1 ? "" : "s"}`;
-
-				games.forEach((game, index) => {
-					const button = document.createElement("button");
-					button.type = "button";
-					button.className = "game-button";
-					button.innerHTML = `
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#2e3440" />
+    <title>ZELLIS Arcade</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --nord0: #2e3440;
+        --nord1: #3b4252;
+        --nord2: #434c5e;
+        --nord3: #4c566a;
+        --nord4: #d8dee9;
+        --nord5: #e5e9f0;
+        --nord6: #eceff4;
+        --frost0: #8fbcbb;
+        --frost1: #88c0d0;
+        --frost2: #81a1c1;
+        --frost3: #5e81ac;
+        --aurora0: #bf616a;
+        --aurora1: #d08770;
+        --aurora2: #ebcb8b;
+        --aurora3: #a3be8c;
+        --accent: var(--frost2);
+        --accent-strong: var(--frost3);
+        --accent-rgb: 129, 161, 193;
+        --shadow-soft: 0 24px 70px rgba(46, 52, 64, 0.16);
+        --shadow-card: 0 18px 40px rgba(46, 52, 64, 0.12);
+        font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        min-height: 100%;
+        background:
+          radial-gradient(
+            circle at top,
+            rgba(var(--accent-rgb), 0.22),
+            transparent 38%
+          ),
+          linear-gradient(180deg, #f8fafc 0%, var(--nord6) 56%, #dde6f0 100%);
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--nord0);
+        background: transparent;
+      }
+
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        inset: auto;
+        pointer-events: none;
+        z-index: 0;
+        filter: blur(8px);
+      }
+
+      body::before {
+        top: 5rem;
+        left: -4rem;
+        width: 18rem;
+        height: 18rem;
+        border-radius: 50%;
+        background: rgba(143, 188, 187, 0.2);
+      }
+
+      body::after {
+        right: -3rem;
+        bottom: 4rem;
+        width: 20rem;
+        height: 20rem;
+        border-radius: 38% 62% 53% 47%;
+        background: rgba(var(--accent-rgb), 0.16);
+      }
+
+      .page {
+        position: relative;
+        z-index: 1;
+        width: min(1120px, calc(100% - 2rem));
+        margin: 0 auto;
+        padding: 2rem 0 3rem;
+      }
+
+      .hero {
+        padding: clamp(1rem, 3vw, 2rem) 0 1.5rem;
+      }
+
+      .eyebrow {
+        margin: 0 0 0.6rem;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--accent-strong);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2.6rem, 7vw, 5rem);
+        line-height: 0.94;
+        letter-spacing: -0.05em;
+      }
+
+      .lede {
+        max-width: 42rem;
+        margin: 1rem 0 0;
+        font-size: clamp(1rem, 2.2vw, 1.15rem);
+        line-height: 1.6;
+        color: var(--nord3);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.2fr);
+        gap: 1.2rem;
+        align-items: stretch;
+      }
+
+      .panel {
+        border: 1px solid rgba(94, 129, 172, 0.12);
+        border-radius: 1.75rem;
+        background: rgba(255, 255, 255, 0.74);
+        backdrop-filter: blur(18px);
+        box-shadow: var(--shadow-soft);
+      }
+
+      .game-nav {
+        padding: 1.15rem;
+      }
+
+      .game-nav-header,
+      .detail-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.95rem;
+      }
+
+      .section-label {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 750;
+        letter-spacing: -0.03em;
+      }
+
+      .section-copy {
+        margin: 0;
+        font-size: 0.95rem;
+        color: var(--nord3);
+      }
+
+      .count-badge,
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.38rem 0.72rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .count-badge {
+        color: var(--nord1);
+        background: rgba(76, 86, 106, 0.08);
+      }
+
+      .status-badge {
+        color: var(--accent-strong);
+        background: rgba(var(--accent-rgb), 0.16);
+      }
+
+      .game-buttons {
+        display: grid;
+        gap: 0.8rem;
+      }
+
+      .game-button {
+        position: relative;
+        width: 100%;
+        padding: 1rem;
+        border: 1px solid rgba(94, 129, 172, 0.1);
+        border-radius: 1.3rem;
+        background:
+          linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.96),
+            rgba(236, 239, 244, 0.94)
+          ),
+          radial-gradient(
+            circle at top right,
+            rgba(var(--accent-rgb), 0.1),
+            transparent 50%
+          );
+        box-shadow: 0 8px 18px rgba(46, 52, 64, 0.06);
+        text-align: left;
+        cursor: pointer;
+        transition:
+          transform 180ms ease,
+          box-shadow 180ms ease,
+          border-color 180ms ease,
+          background 220ms ease;
+      }
+
+      .game-button:hover,
+      .game-button:focus-visible {
+        transform: translateY(-2px);
+        border-color: rgba(var(--accent-rgb), 0.42);
+        box-shadow: var(--shadow-card);
+        outline: none;
+      }
+
+      .game-button.is-selected {
+        border-color: rgba(var(--accent-rgb), 0.55);
+        background:
+          linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.98),
+            rgba(var(--accent-rgb), 0.16)
+          ),
+          radial-gradient(
+            circle at top right,
+            rgba(var(--accent-rgb), 0.18),
+            transparent 50%
+          );
+        transform: translateY(-1px) scale(1.01);
+        box-shadow: 0 22px 44px rgba(46, 52, 64, 0.13);
+      }
+
+      .game-button-title {
+        margin: 0;
+        font-size: 1.12rem;
+        font-weight: 760;
+        letter-spacing: -0.03em;
+        color: var(--nord0);
+      }
+
+      .game-button-copy {
+        margin: 0.35rem 0 0;
+        font-size: 0.95rem;
+        line-height: 1.45;
+        color: var(--nord3);
+      }
+
+      .game-button-status {
+        display: inline-block;
+        margin-top: 0.85rem;
+        font-size: 0.73rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent-strong);
+      }
+
+      .detail-panel {
+        padding: clamp(1.2rem, 2vw, 1.5rem);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 1.2rem;
+      }
+
+      .detail-copy {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .detail-title {
+        margin: 0;
+        font-size: clamp(2rem, 4vw, 3.3rem);
+        line-height: 0.98;
+        letter-spacing: -0.05em;
+      }
+
+      .accent-line {
+        width: 5.5rem;
+        height: 0.38rem;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+        box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.08);
+      }
+
+      .detail-description,
+      .launch-target,
+      .detail-note {
+        margin: 0;
+        color: var(--nord3);
+        line-height: 1.65;
+        font-size: 1rem;
+      }
+
+      .launch-box {
+        padding: 1rem 1.1rem;
+        border-radius: 1.25rem;
+        background: rgba(216, 222, 233, 0.42);
+        border: 1px solid rgba(94, 129, 172, 0.1);
+      }
+
+      .launch-label {
+        margin: 0 0 0.35rem;
+        font-size: 0.74rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--nord2);
+      }
+
+      .launch-target {
+        font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 0.92rem;
+        word-break: break-all;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+      }
+
+      .play-link,
+      .secondary-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 3.25rem;
+        padding: 0.9rem 1.2rem;
+        border-radius: 999px;
+        text-decoration: none;
+        font-weight: 750;
+        letter-spacing: -0.02em;
+        transition:
+          transform 180ms ease,
+          box-shadow 180ms ease,
+          background-color 180ms ease,
+          border-color 180ms ease;
+      }
+
+      .play-link {
+        color: white;
+        background: linear-gradient(
+          135deg,
+          var(--accent),
+          var(--accent-strong)
+        );
+        box-shadow: 0 16px 32px rgba(var(--accent-rgb), 0.28);
+      }
+
+      .secondary-link {
+        color: var(--nord1);
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(94, 129, 172, 0.12);
+      }
+
+      .play-link:hover,
+      .play-link:focus-visible,
+      .secondary-link:hover,
+      .secondary-link:focus-visible {
+        transform: translateY(-2px);
+        outline: none;
+      }
+
+      .footer-copy {
+        margin: 1rem 0 0;
+        font-size: 0.94rem;
+        color: var(--nord3);
+      }
+
+      .empty-state {
+        padding: 2rem;
+        text-align: center;
+      }
+
+      .noscript {
+        margin-top: 1rem;
+        padding: 1rem 1.1rem;
+        border-radius: 1rem;
+        background: rgba(191, 97, 106, 0.1);
+        color: var(--nord1);
+      }
+
+      @media (max-width: 860px) {
+        .page {
+          width: min(100% - 1.2rem, 1120px);
+          padding-top: 1.2rem;
+        }
+
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          scroll-behavior: auto;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <p class="eyebrow">ZELLIS Games</p>
+        <h1>Pick a game.</h1>
+        <p class="lede">
+          Select a build, preview its details, and jump straight into the
+          web-exported version of the Godot project.
+        </p>
+      </header>
+
+      <section class="layout" aria-label="Game launcher">
+        <nav class="panel game-nav" aria-labelledby="games-heading">
+          <div class="game-nav-header">
+            <div>
+              <h2 id="games-heading" class="section-label">Available builds</h2>
+              <p class="section-copy">
+                Static root, individual game exports stay in their own folders.
+              </p>
+            </div>
+            <span id="game-count" class="count-badge">0 Games</span>
+          </div>
+          <div id="game-buttons" class="game-buttons"></div>
+        </nav>
+
+        <section class="panel detail-panel" aria-live="polite">
+          <div class="detail-copy">
+            <div class="detail-header">
+              <p class="section-label">Launch details</p>
+              <span id="status-badge" class="status-badge">Ready</span>
+            </div>
+            <h2 id="detail-title" class="detail-title">Loading games...</h2>
+            <div class="accent-line" aria-hidden="true"></div>
+            <p id="detail-description" class="detail-description">
+              Reading the registry of exported web builds.
+            </p>
+            <div class="launch-box">
+              <p class="launch-label">Target</p>
+              <p id="launch-target" class="launch-target">./data/games.json</p>
+            </div>
+            <p class="detail-note">
+              Use browser back to return after launching a game. Add future
+              entries by exporting into a folder and updating
+              <code>data/games.json</code>.
+            </p>
+          </div>
+
+          <div class="actions">
+            <a id="play-link" class="play-link" href="./tic_tac_toe/index.html"
+              >Launch game</a
+            >
+          </div>
+        </section>
+      </section>
+
+      <p class="footer-copy">
+        Responsive buttons, Nord palette, no root Godot web boot sequence.
+      </p>
+
+      <noscript>
+        <div class="noscript">
+          JavaScript is disabled. You can still open
+          <a href="./tic_tac_toe/index.html">Tic Tac Toe</a>,
+          <a href="./flappy/index.html">Flappy</a>, or
+          <a href="./pai-do/index.html">pai-do</a>.
+        </div>
+      </noscript>
+    </main>
+
+    <script>
+      const fallbackGames = [
+        {
+          id: "tic_tac_toe",
+          title: "Tic Tac Toe",
+          description:
+            "Classic 3x3 play with a portrait-first layout built for the browser.",
+          url: "./tic_tac_toe/index.html",
+          status: "Ready",
+          accent: "#81a1c1",
+        },
+        {
+          id: "flappy",
+          title: "Flappy",
+          description:
+            "Tap or click to flap, hold altitude, and reset instantly for another run.",
+          url: "./flappy/index.html",
+          status: "Ready",
+          accent: "#d08770",
+        },
+        {
+          id: "pai_do",
+          title: "pai-do",
+          description:
+            "Prototype board sandbox with a portrait-first playfield and a slide-up tile drawer.",
+          url: "./pai-do/index.html",
+          status: "Prototype",
+          accent: "#b48766",
+        },
+      ];
+
+      const gameButtons = document.getElementById("game-buttons");
+      const gameCount = document.getElementById("game-count");
+      const statusBadge = document.getElementById("status-badge");
+      const detailTitle = document.getElementById("detail-title");
+      const detailDescription = document.getElementById("detail-description");
+      const launchTarget = document.getElementById("launch-target");
+      const playLink = document.getElementById("play-link");
+
+      let games = [];
+      let selectedIndex = 0;
+
+      function normalizeGames(candidate) {
+        return Array.isArray(candidate)
+          ? candidate.filter((item) => item && typeof item === "object")
+          : [];
+      }
+
+      function toRgb(hex) {
+        const value = String(hex || "").trim();
+        const normalized = value.startsWith("#") ? value.slice(1) : value;
+        if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
+          return "129, 161, 193";
+        }
+
+        const r = Number.parseInt(normalized.slice(0, 2), 16);
+        const g = Number.parseInt(normalized.slice(2, 4), 16);
+        const b = Number.parseInt(normalized.slice(4, 6), 16);
+        return `${r}, ${g}, ${b}`;
+      }
+
+      function setAccent(accent) {
+        const root = document.documentElement;
+        const value = accent || "#81a1c1";
+        root.style.setProperty("--accent", value);
+        root.style.setProperty("--accent-strong", value);
+        root.style.setProperty("--accent-rgb", toRgb(value));
+      }
+
+      function renderEmptyState() {
+        gameButtons.innerHTML =
+          '<div class="panel empty-state"><p class="section-label">No games registered</p><p class="section-copy">Add entries to <code>data/games.json</code>.</p></div>';
+        gameCount.textContent = "0 Games";
+        statusBadge.textContent = "Empty";
+        detailTitle.textContent = "No game selected";
+        detailDescription.textContent =
+          "The launcher could not find any exported game entries.";
+        launchTarget.textContent = "./data/games.json";
+        playLink.removeAttribute("href");
+        playLink.setAttribute("aria-disabled", "true");
+        playLink.style.pointerEvents = "none";
+        playLink.style.opacity = "0.55";
+        setAccent("#4c566a");
+      }
+
+      function updateSelectedGame(index) {
+        if (!games.length) {
+          renderEmptyState();
+          return;
+        }
+
+        selectedIndex = index;
+        const game = games[index];
+        setAccent(game.accent);
+        statusBadge.textContent = String(game.status || "Ready");
+        detailTitle.textContent = String(game.title || "Untitled Game");
+        detailDescription.textContent = String(
+          game.description || "No description provided.",
+        );
+        launchTarget.textContent = String(game.url || "");
+        playLink.href = String(game.url || "#");
+        playLink.textContent = `Launch ${String(game.title || "game")}`;
+        playLink.removeAttribute("aria-disabled");
+        playLink.style.pointerEvents = "";
+        playLink.style.opacity = "";
+
+        for (const [buttonIndex, button] of gameButtons
+          .querySelectorAll(".game-button")
+          .entries()) {
+          button.classList.toggle("is-selected", buttonIndex === index);
+          button.setAttribute(
+            "aria-pressed",
+            buttonIndex === index ? "true" : "false",
+          );
+        }
+
+        const nextHash = `#${game.id || index}`;
+        if (window.location.hash !== nextHash) {
+          history.replaceState(null, "", nextHash);
+        }
+      }
+
+      function renderGames() {
+        if (!games.length) {
+          renderEmptyState();
+          return;
+        }
+
+        gameButtons.replaceChildren();
+        gameCount.textContent = `${games.length} Game${games.length === 1 ? "" : "s"}`;
+
+        games.forEach((game, index) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "game-button";
+          button.innerHTML = `
 						<p class="game-button-title">${String(game.title || "Untitled Game")}</p>
 						<p class="game-button-copy">${String(game.description || "No description provided.")}</p>
 						<span class="game-button-status">${String(game.status || "Ready")}</span>
 					`;
-					button.addEventListener("click", () => updateSelectedGame(index));
-					gameButtons.appendChild(button);
-				});
+          button.addEventListener("click", () => updateSelectedGame(index));
+          gameButtons.appendChild(button);
+        });
 
-				const hashId = window.location.hash.replace(/^#/, "");
-				const hashIndex = games.findIndex((game) => String(game.id || "") === hashId);
-				updateSelectedGame(hashIndex >= 0 ? hashIndex : 0);
-			}
+        const hashId = window.location.hash.replace(/^#/, "");
+        const hashIndex = games.findIndex(
+          (game) => String(game.id || "") === hashId,
+        );
+        updateSelectedGame(hashIndex >= 0 ? hashIndex : 0);
+      }
 
-			async function loadGames() {
-				try {
-					const response = await fetch("./data/games.json", { cache: "no-store" });
-					if (!response.ok) {
-						throw new Error(`HTTP ${response.status}`);
-					}
+      async function loadGames() {
+        try {
+          const response = await fetch("./data/games.json", {
+            cache: "no-store",
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
 
-					const payload = await response.json();
-					games = normalizeGames(payload);
-				} catch (error) {
-					console.warn("Falling back to inline game registry.", error);
-					games = normalizeGames(fallbackGames);
-				}
+          const payload = await response.json();
+          games = normalizeGames(payload);
+        } catch (error) {
+          console.warn("Falling back to inline game registry.", error);
+          games = normalizeGames(fallbackGames);
+        }
 
-				renderGames();
-			}
+        renderGames();
+      }
 
-			window.addEventListener("hashchange", () => {
-				if (!games.length) {
-					return;
-				}
+      window.addEventListener("hashchange", () => {
+        if (!games.length) {
+          return;
+        }
 
-				const hashId = window.location.hash.replace(/^#/, "");
-				const index = games.findIndex((game) => String(game.id || "") === hashId);
-				if (index >= 0 && index !== selectedIndex) {
-					updateSelectedGame(index);
-				}
-			});
+        const hashId = window.location.hash.replace(/^#/, "");
+        const index = games.findIndex(
+          (game) => String(game.id || "") === hashId,
+        );
+        if (index >= 0 && index !== selectedIndex) {
+          updateSelectedGame(index);
+        }
+      });
 
-			loadGames();
-		</script>
-	</body>
+      loadGames();
+    </script>
+  </body>
 </html>
