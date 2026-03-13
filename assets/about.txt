@@ -1,0 +1,1 @@
+This favicon is a custom Triforce icon (three triangles), generated locally with Python (Pillow).

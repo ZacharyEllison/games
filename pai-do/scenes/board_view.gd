@@ -4,6 +4,7 @@ extends Control
 
 signal slot_activated(slot_id: String)
 signal slot_gui_input(slot_id: String, event: InputEvent, global_position: Vector2)
+const TOKEN_GLYPH_SCENE := preload("res://scenes/token_glyph.tscn")
 const DEBUG_BOARD_LOGS := true
 
 const BOARD_ROTATION := PI / 4.0
@@ -28,6 +29,8 @@ const CENTER_SLOT_COLOR := Color("c66f3d")
 const SLOT_GOOD_COLOR := Color("6f9d57")
 const SLOT_BAD_COLOR := Color("9a5f2f")
 const SLOT_DEAD_COLOR := Color("221915")
+const WITHER_RING_COLOR := Color(0.28, 0.15, 0.12, 0.9)
+const WITHER_WASH_COLOR := Color(0.19, 0.12, 0.09, 0.18)
 const FLOWER_IDS := {
 	"lotus": true,
 	"bell_flower": true,
@@ -82,6 +85,8 @@ var tile_index_by_id := {}
 var line_nodes := {}
 var slot_buttons := {}
 var slot_glyphs := {}
+var slot_warning_rings := {}
+var slot_warning_washes := {}
 var slot_positions := {}
 
 var selected_slot_id := ""
@@ -93,11 +98,14 @@ var board_span := 0.0
 var board_circle_radius := 0.0
 var slot_button_size := 84.0
 
+var wither_effect_layer: Control
+var _warning_time := 0.0
 var _built := false
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_ensure_overlay_layers()
 	_build_slot_data()
 	_cache_scene_nodes()
 	_apply_static_theme()
@@ -105,9 +113,17 @@ func _ready() -> void:
 		resized.connect(_layout_board)
 	if not mouse_exited.is_connected(_clear_hover_slot):
 		mouse_exited.connect(_clear_hover_slot)
+	set_process(true)
 	_built = true
 	_layout_board()
 	_refresh_visuals()
+
+
+func _process(delta: float) -> void:
+	if not _built:
+		return
+	_warning_time += delta
+	_update_wither_warning_nodes()
 
 
 func set_tile_defs(next_tile_defs: Array[Dictionary]) -> void:
@@ -499,6 +515,8 @@ func _cache_scene_nodes() -> void:
 	line_nodes.clear()
 	slot_buttons.clear()
 	slot_glyphs.clear()
+	slot_warning_rings.clear()
+	slot_warning_washes.clear()
 
 	for edge in BOARD_CONNECTIONS:
 		var line_name := "Line_%s" % _edge_key(edge).replace(":", "_")
@@ -532,6 +550,7 @@ func _cache_scene_nodes() -> void:
 			button.mouse_exited.connect(exit_callable)
 		slot_buttons[slot_id] = button
 		slot_glyphs[slot_id] = glyph
+		_ensure_slot_warning_nodes(button, slot_id)
 
 
 func _apply_static_theme() -> void:
@@ -592,6 +611,7 @@ func _layout_board() -> void:
 		button.size = Vector2.ONE * slot_button_size
 		button.position = slot_positions[slot_id] - button.size * 0.5
 		button.add_theme_font_size_override("font_size", int(slot_button_size * 0.28))
+		_layout_slot_warning_nodes(slot_id)
 
 	_refresh_visuals()
 
@@ -625,14 +645,19 @@ func _refresh_visuals() -> void:
 			fill_color = TILE_CARD_COLOR
 			border_color = _life_color(String(slot["life_state"]))
 			glyph.visible = true
+			glyph.self_modulate = Color(1.0, 1.0, 1.0, 1.0)
 			glyph.configure(
 				String(tile["id"]),
 				Color(tile["accent"]).darkened(0.72),
 				0.92,
 				String(slot["owner_id"]) == PLAYER_GUEST
 			)
+			if String(slot["life_state"]) == "dead":
+				fill_color = fill_color.darkened(0.08)
+				glyph.self_modulate = Color(0.78, 0.67, 0.61, 0.9)
 		else:
 			glyph.visible = false
+			glyph.self_modulate = Color(1.0, 1.0, 1.0, 1.0)
 			if bool(slot.get("rusted", false)):
 				border_color = SLOT_BAD_COLOR
 
@@ -651,6 +676,8 @@ func _refresh_visuals() -> void:
 		button.add_theme_stylebox_override("hover", _make_round_style(fill_color.lightened(0.05), BOARD_HIGHLIGHT_COLOR, max(border_width, 3)))
 		button.add_theme_stylebox_override("pressed", _make_round_style(fill_color.darkened(0.05), BOARD_HIGHLIGHT_COLOR, max(border_width, 3)))
 		button.add_theme_stylebox_override("focus", _make_round_style(fill_color, BOARD_HIGHLIGHT_COLOR, max(border_width, 3)))
+
+	_update_wither_warning_nodes()
 
 
 func _on_slot_button_pressed(slot_id: String) -> void:
@@ -797,6 +824,18 @@ func _make_round_style(fill_color: Color, border_color: Color, border_width: int
 	return style
 
 
+func _make_ring_style(border_color: Color, border_width: int) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+	style.border_color = border_color
+	style.set_border_width_all(border_width)
+	style.corner_radius_top_left = 999
+	style.corner_radius_top_right = 999
+	style.corner_radius_bottom_right = 999
+	style.corner_radius_bottom_left = 999
+	return style
+
+
 func _edge_key(edge: Array) -> String:
 	return "%s:%s" % [String(edge[0]), String(edge[1])]
 
@@ -811,6 +850,18 @@ func _slot_node_key(slot_id: String) -> String:
 
 func _tile_by_id(tile_id: String) -> Dictionary:
 	return tile_defs[int(tile_index_by_id[tile_id])]
+
+
+func play_wither_animation(dead_tiles: Array) -> void:
+	if dead_tiles.is_empty():
+		return
+	for dead_tile in dead_tiles:
+		if dead_tile is Dictionary:
+			_spawn_wither_effect(
+				String(dead_tile.get("slot_id", "")),
+				String(dead_tile.get("tile_id", "")),
+				String(dead_tile.get("owner_id", ""))
+			)
 
 
 func _evaluate_board_state(round_count: int = 0) -> void:
@@ -1042,6 +1093,181 @@ func _collect_dead_tiles() -> Array:
 		slot["bloom"] = false
 		board_slots[index] = slot
 	return dead_tiles
+
+
+func _ensure_overlay_layers() -> void:
+	if wither_effect_layer != null:
+		return
+	wither_effect_layer = Control.new()
+	wither_effect_layer.name = "WitherEffectLayer"
+	wither_effect_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wither_effect_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(wither_effect_layer)
+
+
+func _ensure_slot_warning_nodes(button: Button, slot_id: String) -> void:
+	var warning_wash := button.get_node_or_null("WitherWarningWash") as Panel
+	if warning_wash == null:
+		warning_wash = Panel.new()
+		warning_wash.name = "WitherWarningWash"
+		warning_wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		warning_wash.add_theme_stylebox_override("panel", _make_round_style(WITHER_WASH_COLOR, Color(0.0, 0.0, 0.0, 0.0), 0))
+		button.add_child(warning_wash)
+		button.move_child(warning_wash, 0)
+
+	var warning_ring := button.get_node_or_null("WitherWarningRing") as Panel
+	if warning_ring == null:
+		warning_ring = Panel.new()
+		warning_ring.name = "WitherWarningRing"
+		warning_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		warning_ring.add_theme_stylebox_override("panel", _make_ring_style(WITHER_RING_COLOR, 3))
+		button.add_child(warning_ring)
+		button.move_child(warning_ring, 1)
+
+	warning_wash.visible = false
+	warning_ring.visible = false
+	slot_warning_washes[slot_id] = warning_wash
+	slot_warning_rings[slot_id] = warning_ring
+
+
+func _layout_slot_warning_nodes(slot_id: String) -> void:
+	if not slot_buttons.has(slot_id):
+		return
+	var button := slot_buttons[slot_id] as Button
+	var warning_wash := slot_warning_washes.get(slot_id) as Panel
+	var warning_ring := slot_warning_rings.get(slot_id) as Panel
+	var wash_inset := clampf(slot_button_size * 0.08, 4.0, 7.0)
+	var ring_margin := clampf(slot_button_size * 0.16, 8.0, 13.0)
+
+	if warning_wash != null:
+		warning_wash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		warning_wash.offset_left = wash_inset
+		warning_wash.offset_top = wash_inset
+		warning_wash.offset_right = -wash_inset
+		warning_wash.offset_bottom = -wash_inset
+
+	if warning_ring != null:
+		warning_ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		warning_ring.offset_left = -ring_margin
+		warning_ring.offset_top = -ring_margin
+		warning_ring.offset_right = ring_margin
+		warning_ring.offset_bottom = ring_margin
+		warning_ring.pivot_offset = warning_ring.size * 0.5
+
+	if button != null:
+		button.clip_contents = false
+
+
+func _update_wither_warning_nodes() -> void:
+	for index in range(board_slots.size()):
+		var slot: Dictionary = board_slots[index]
+		var slot_id := String(slot["id"])
+		var warning_wash := slot_warning_washes.get(slot_id) as Panel
+		var warning_ring := slot_warning_rings.get(slot_id) as Panel
+		if warning_wash == null or warning_ring == null:
+			continue
+
+		var is_withering := String(slot["life_state"]) == "dead" and not String(slot["placed_tile_id"]).is_empty()
+		if not is_withering:
+			warning_wash.visible = false
+			warning_wash.scale = Vector2.ONE
+			warning_wash.self_modulate = Color(1.0, 1.0, 1.0, 1.0)
+			warning_ring.visible = false
+			warning_ring.scale = Vector2.ONE
+			warning_ring.self_modulate = Color(1.0, 1.0, 1.0, 1.0)
+			continue
+
+		var pulse := 0.5 + 0.5 * sin(_warning_time * 6.2 + float(index) * 0.75)
+		warning_wash.visible = true
+		warning_wash.self_modulate = Color(1.0, 1.0, 1.0, 0.42 + pulse * 0.22)
+		warning_wash.scale = Vector2.ONE * (0.98 + pulse * 0.02)
+		warning_wash.pivot_offset = warning_wash.size * 0.5
+		warning_ring.visible = true
+		warning_ring.self_modulate = Color(1.0, 1.0, 1.0, 0.38 + pulse * 0.34)
+		warning_ring.scale = Vector2.ONE * (1.02 + pulse * 0.14)
+		warning_ring.pivot_offset = warning_ring.size * 0.5
+
+
+func _spawn_wither_effect(slot_id: String, tile_id: String, owner_id: String) -> void:
+	if slot_id.is_empty() or tile_id.is_empty():
+		return
+	if wither_effect_layer == null or not slot_positions.has(slot_id):
+		return
+
+	var accent := TEXT_COLOR
+	if tile_index_by_id.has(tile_id):
+		accent = Color(_tile_by_id(tile_id)["accent"])
+
+	var effect_root := Control.new()
+	effect_root.name = "WitherEffect_%s" % slot_id
+	effect_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	effect_root.size = Vector2.ONE * slot_button_size
+	effect_root.position = slot_positions[slot_id] - effect_root.size * 0.5
+	effect_root.pivot_offset = effect_root.size * 0.5
+	effect_root.modulate = Color(1.0, 1.0, 1.0, 0.96)
+	wither_effect_layer.add_child(effect_root)
+
+	var ring_margin := clampf(slot_button_size * 0.16, 8.0, 13.0)
+	var ring := Panel.new()
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ring.offset_left = -ring_margin
+	ring.offset_top = -ring_margin
+	ring.offset_right = ring_margin
+	ring.offset_bottom = ring_margin
+	ring.add_theme_stylebox_override("panel", _make_ring_style(WITHER_RING_COLOR.lightened(0.16), 3))
+	ring.pivot_offset = ring.size * 0.5
+	effect_root.add_child(ring)
+
+	var card := Panel.new()
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	card.add_theme_stylebox_override("panel", _make_round_style(TILE_CARD_COLOR, SLOT_DEAD_COLOR, 3))
+	effect_root.add_child(card)
+
+	var wash_inset := clampf(slot_button_size * 0.08, 4.0, 7.0)
+	var wash := Panel.new()
+	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	wash.offset_left = wash_inset
+	wash.offset_top = wash_inset
+	wash.offset_right = -wash_inset
+	wash.offset_bottom = -wash_inset
+	wash.add_theme_stylebox_override("panel", _make_round_style(Color(0.23, 0.15, 0.12, 0.28), Color(0.0, 0.0, 0.0, 0.0), 0))
+	card.add_child(wash)
+
+	var glyph := TOKEN_GLYPH_SCENE.instantiate() as TokenGlyph
+	var glyph_inset := roundf(slot_button_size * 0.13)
+	glyph.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	glyph.offset_left = glyph_inset
+	glyph.offset_top = glyph_inset
+	glyph.offset_right = -glyph_inset
+	glyph.offset_bottom = -glyph_inset
+	glyph.self_modulate = Color(0.88, 0.8, 0.74, 0.95)
+	glyph.configure(
+		tile_id,
+		accent.darkened(0.72),
+		0.92,
+		owner_id == PLAYER_GUEST
+	)
+	card.add_child(glyph)
+
+	var direction := -1.0 if slot_positions[slot_id].x <= board_center.x else 1.0
+	if absf(slot_positions[slot_id].x - board_center.x) <= slot_button_size * 0.12:
+		direction = -1.0 if slot_positions[slot_id].y < board_center.y else 1.0
+	var end_position := effect_root.position + Vector2(direction * slot_button_size * 0.18, slot_button_size * 0.12)
+
+	var tween := create_tween()
+	tween.tween_property(effect_root, "scale", Vector2.ONE * 1.06, 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(ring, "scale", Vector2.ONE * 1.14, 0.09).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(wash, "modulate", Color(1.0, 1.0, 1.0, 0.58), 0.09).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.chain().tween_property(effect_root, "scale", Vector2.ONE * 0.54, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(effect_root, "rotation", direction * 0.22, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(effect_root, "position", end_position, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(effect_root, "modulate", Color(0.42, 0.31, 0.25, 0.0), 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(ring, "scale", Vector2.ONE * 1.34, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(ring, "modulate", Color(1.0, 1.0, 1.0, 0.0), 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(effect_root.queue_free)
 
 
 func _edge_energy_from_slot(slot: Dictionary, opposite_slot_id: String) -> float:

@@ -477,6 +477,8 @@ func _on_board_slot_activated(slot_id: String) -> void:
 	var immediate_death_suffix := ""
 	if bool(placement.get("died_this_turn", false)):
 		immediate_death_suffix = " It withered at round end."
+	if not dead_tiles.is_empty():
+		board_view.play_wither_animation(dead_tiles)
 
 	if bool(placement["harmony_win"]):
 		game_over = true
@@ -1009,7 +1011,7 @@ func _goal_text() -> String:
 
 
 func _default_interaction_text() -> String:
-	return "Flowers have base energy 1. Adjacent flowers and Sun, Moon, or Dharma add 1. Coin, Road, and Beetle subtract 1. Harsh tiles have base energy -1 and use the inverse rule. Flowers die below 0, harsh tiles die above 0, and dead tiles return at round end."
+	return "Flowers have base energy 1. Adjacent flowers and Sun, Moon, or Dharma add 1. Coin, Road, and Beetle subtract 1. Harsh tiles have base energy -1 and use the inverse rule. Flowers die below 0, harsh tiles die above 0. Dark pulsing spots will wither and return at round end."
 
 
 func _interaction_text_for_tile(tile_id: String) -> String:
