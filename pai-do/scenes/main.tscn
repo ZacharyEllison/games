@@ -457,7 +457,7 @@ autowrap_mode = 3
 layout_mode = 2
 theme_override_colors/font_color = Color(0.2901961, 0.20392157, 0.15294118, 1)
 theme_override_font_sizes/font_size = 16
-text = "Flowers grow stronger from connected flowers and from Sun, Moon, and Dharma. Two adjacent Coin, Road, or Beetle rust a flower, three kill it. Dead tiles return to their player at end of turn."
+text = "Flowers have base energy 1. Adjacent flowers and Sun, Moon, or Dharma add 1. Coin, Road, and Beetle subtract 1. Harsh tiles have base energy -1 and use the inverse rule. Flowers die below 0, harsh tiles die above 0, and dead tiles return at round end."
 autowrap_mode = 3
 
 [node name="CloseRulesButton" type="Button" parent="RulesModal/RulesCenter/RulesPanel/RulesPadding/RulesContent" unique_id=590315155]
