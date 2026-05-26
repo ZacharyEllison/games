@@ -4,6 +4,10 @@
 [ext_resource type="Shader" uid="uid://c5m4h4au26sem" path="res://shaders/sky_clouds.gdshader" id="2_hb4q6"]
 [ext_resource type="Script" uid="uid://c823fin7gv315" path="res://scenes/main.gd" id="3_pk63f"]
 
+[sub_resource type="Curve" id="Curve_sugp2"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 2
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_tbo0n"]
 shader = ExtResource("2_hb4q6")
 shader_parameter/sky_top_color = Color(0.27, 0.64, 1, 1)
@@ -16,7 +20,7 @@ shader_parameter/cloud_softness = 0.12
 
 [node name="main" type="Node2D" unique_id=1303828959]
 script = ExtResource("3_pk63f")
-
+pipe_interval_curve = SubResource("Curve_sugp2")
 
 [node name="Sky" type="ColorRect" parent="." unique_id=2088081108]
 z_index = -100

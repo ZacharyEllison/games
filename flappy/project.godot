@@ -28,6 +28,10 @@ window/size/viewport_width=480
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg")
+
 [input]
 
 press={

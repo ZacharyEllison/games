@@ -1,6 +1,6 @@
 extends Node2D
 
-@export var color := Color(0, 1, 0)
+@export var color := Color(0.451, 0.627, 0.392, 1.0)
 @export var width := 80
 @export var height := 300
 @export var speed := 200
