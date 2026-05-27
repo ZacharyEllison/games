@@ -441,11 +441,11 @@
   <body>
     <main class="page">
       <header class="hero">
-        <p class="eyebrow">ZELLIS Games</p>
+        <p class="eyebrow">zellis games</p>
         <h1>Pick a game.</h1>
         <p class="lede">
-          Select a build, preview its details, and jump straight into the
-          web-exported version of the Godot project.
+          web-exported versions of the Godot projects, code assisted with a
+          local agent
         </p>
       </header>
 
@@ -454,9 +454,6 @@
           <div class="game-nav-header">
             <div>
               <h2 id="games-heading" class="section-label">Available builds</h2>
-              <p class="section-copy">
-                Static root, individual game exports stay in their own folders.
-              </p>
             </div>
             <span id="game-count" class="count-badge">0 Games</span>
           </div>
@@ -464,27 +461,6 @@
         </nav>
 
         <section class="panel detail-panel" aria-live="polite">
-          <div class="detail-copy">
-            <div class="detail-header">
-              <p class="section-label">Launch details</p>
-              <span id="status-badge" class="status-badge">Ready</span>
-            </div>
-            <h2 id="detail-title" class="detail-title">Loading games...</h2>
-            <div class="accent-line" aria-hidden="true"></div>
-            <p id="detail-description" class="detail-description">
-              Reading the registry of exported web builds.
-            </p>
-            <div class="launch-box">
-              <p class="launch-label">Target</p>
-              <p id="launch-target" class="launch-target">./data/games.json</p>
-            </div>
-            <p class="detail-note">
-              Use browser back to return after launching a game. Add future
-              entries by exporting into a folder and updating
-              <code>data/games.json</code>.
-            </p>
-          </div>
-
           <div class="actions">
             <a id="play-link" class="play-link" href="./tic_tac_toe/index.html"
               >Launch game</a
@@ -493,9 +469,7 @@
         </section>
       </section>
 
-      <p class="footer-copy">
-        Responsive buttons, Nord palette, no root Godot web boot sequence.
-      </p>
+      <p class="footer-copy"></p>
 
       <noscript>
         <div class="noscript">
@@ -521,10 +495,9 @@
         {
           id: "flappy",
           title: "Flappy",
-          description:
-            "Tap or click to flap, hold altitude, and reset instantly for another run.",
+          description: "Tap or click to flap",
           url: "./flappy/index.html",
-          status: "Ready",
+          status: "Prototype",
           accent: "#d08770",
         },
         {
