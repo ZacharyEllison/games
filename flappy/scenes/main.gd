@@ -11,10 +11,11 @@ var pipe_timer := 0.0
 var pipe_interval := 1.5
 var pipe_width := 80
 var pipe_speed := 200
-var pipe_gap := 190
+@export var pipe_gap := 190
 var pipe_min_height := 90
 
 @export var pipe_interval_curve: Curve
+
 @export var curve_duration: float = 60.0
 var elapsed_time: float = 0.0
 
@@ -40,7 +41,7 @@ func _process(delta: float) -> void:
 
 	pipe_timer += delta
 	if pipe_timer >= pipe_interval:
-		print("Debug: Spawning pipe. Interval: ", pipe_interval, " Elapsed: ", elapsed_time)
+		print("Debug: Spawning pipe. Interval:Gap ", pipe_interval,":", pipe_gap, " Elapsed: ", elapsed_time)
 		spawn_pipe_pair()
 		pipe_timer = 0.0
 
