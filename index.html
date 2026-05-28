@@ -173,12 +173,17 @@
 
       .card-status {
         display: inline-block;
-        margin-top: 0.85rem;
-        font-size: 0.73rem;
-        font-weight: 800;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: var(--accent-strong);
+        padding: 0.25rem 0.6rem;
+        background: var(--accent-strong);
+        color: var(--nord0);
+        border-radius: 0.35rem;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+
+      .card-status.prototype {
+        background: #e07a2f;
       }
 
       .footer-copy {
@@ -267,7 +272,7 @@
             <img class="card-icon" src="${game.icon}" alt="">
             <p class="card-title">${game.title}</p>
             <p class="card-desc">${game.description}</p>
-            <span class="card-status">${game.status}</span>`;
+            <span class="card-status${game.status === 'Prototype' ? ' prototype' : ''}">${game.status}</span>`;
           grid.appendChild(a);
         });
 
