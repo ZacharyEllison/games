@@ -163,6 +163,14 @@
         color: var(--nord3);
       }
 
+      .card-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 0.5rem;
+        margin-bottom: 0.5rem;
+        object-fit: contain;
+      }
+
       .card-status {
         display: inline-block;
         margin-top: 0.85rem;
@@ -231,11 +239,10 @@
 
     <script>
       const fallbackGames = [
-        { id: "tic_tac_toe", title: "Tic Tac Toe", description: "Classic 3x3 play with a portrait-first layout built for the browser.", url: "./tic_tac_toe/index.html", status: "Ready", accent: "#81a1c1" },
-        { id: "flappy", title: "Flappy", description: "Tap or click to flap, hold altitude, and reset instantly for another run.", url: "./flappy/index.html", status: "Ready", accent: "#d08770" },
-        { id: "pai_do", title: "pai-do", description: "Prototype board sandbox with a portrait-first playfield and a slide-up tile drawer.", url: "./pai-do/index.html", status: "Prototype", accent: "#b48766" },
+        { id: "tic_tac_toe", title: "Tic Tac Toe", description: "Classic 3x3 play with a portrait-first layout built for the browser.", url: "./tic_tac_toe/index.html", status: "Ready", icon: "./tic_tac_toe/Tic Tac Toe.icon.png", accent: "#81a1c1" },
+        { id: "flappy", title: "Flappy", description: "Tap or click to flap, hold altitude, and reset instantly for another run.", url: "./flappy/index.html", status: "Prototype", icon: "./flappy/Flappy.icon.png", accent: "#d08770" },
+        { id: "pai_do", title: "pai-do", description: "Prototype board sandbox with a portrait-first playfield and a slide-up tile drawer.", url: "./pai-do/index.html", status: "Prototype", icon: "./pai-do/index.icon.png", accent: "#b48766" },
       ];
-
       const grid = document.getElementById("grid");
       const footer = document.querySelector(".footer-copy");
 
@@ -257,6 +264,7 @@
           a.href = game.url;
           a.className = "card";
           a.innerHTML = `
+            <img class="card-icon" src="${game.icon}" alt="">
             <p class="card-title">${game.title}</p>
             <p class="card-desc">${game.description}</p>
             <span class="card-status">${game.status}</span>`;

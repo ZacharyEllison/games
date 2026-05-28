@@ -4,6 +4,7 @@
     "title": "Tic Tac Toe",
     "description": "Classic 3x3 play with a portrait-first layout built for the browser.",
     "url": "./tic_tac_toe/index.html",
+    "icon": "./tic_tac_toe/Tic Tac Toe.icon.png",
     "status": "Ready",
     "accent": "#81a1c1"
   },
@@ -12,7 +13,8 @@
     "title": "Flappy",
     "description": "Tap or click to flap, hold altitude, and reset instantly for another run.",
     "url": "./flappy/index.html",
-    "status": "Ready",
+    "icon": "./flappy/Flappy.icon.png",
+    "status": "Prototype",
     "accent": "#d08770"
   },
   {
@@ -20,6 +22,7 @@
     "title": "pai-do",
     "description": "Prototype board sandbox with a portrait-first playfield and a slide-up tile drawer.",
     "url": "./pai-do/index.html",
+    "icon": "./pai-do/index.icon.png",
     "status": "Prototype",
     "accent": "#b48766"
   }
