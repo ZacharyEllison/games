@@ -25,5 +25,14 @@
     "icon": "./pai-do/index.icon.png",
     "status": "Prototype",
     "accent": "#b48766"
+  },
+  {
+    "id": "brickbreaker",
+    "title": "Brick Breaker",
+    "description": "Smash colorful googly-eyed bricks with a bouncing ball in this toy-block arcade game.",
+    "url": "./brickbreaker/index.html",
+    "icon": "./brickbreaker/index.icon.png",
+    "status": "Prototype",
+    "accent": "#a3be8c"
   }
 ]

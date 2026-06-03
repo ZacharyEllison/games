@@ -1,0 +1,64 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scenes/brick.gd" id="1"]
+[ext_resource type="Texture2D" path="res://art/kenney_brick-pack/PNG/Default/Green/brick_high_2.png" id="2"]
+[ext_resource type="Texture2D" path="res://art/kenney_googly-eyes/PNG/googly-a.png" id="3"]
+[ext_resource type="Texture2D" path="res://art/kenney_googly-eyes/PNG/googly-b.png" id="4"]
+[ext_resource type="Texture2D" path="res://art/kenney_googly-eyes/PNG/googly-c.png" id="5"]
+[ext_resource type="Texture2D" path="res://art/kenney_googly-eyes/PNG/googly-d.png" id="6"]
+[ext_resource type="Texture2D" path="res://art/kenney_googly-eyes/PNG/googly-e.png" id="7"]
+[ext_resource type="AudioStream" path="res://audio/brick_click.wav" id="8"]
+
+[sub_resource type="RectangleShape2D" id="Rect_brick"]
+size = Vector2(64, 64)
+
+[sub_resource type="SpriteFrames" id="EyeFrames"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6")
+}, {
+"duration": 1.0,
+"texture": ExtResource("7")
+}],
+"loop": true,
+"name": &"googly",
+"speed": 18.0
+}]
+
+[node name="Brick" type="StaticBody2D"]
+scale = Vector2(1.15, 1.15)
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("1")
+
+[node name="Body" type="Sprite2D" parent="."]
+texture = ExtResource("2")
+
+[node name="EyeLeft" type="AnimatedSprite2D" parent="."]
+position = Vector2(-11, 0)
+scale = Vector2(0.055, 0.055)
+sprite_frames = SubResource("EyeFrames")
+animation = &"googly"
+
+[node name="EyeRight" type="AnimatedSprite2D" parent="."]
+position = Vector2(11, 0)
+scale = Vector2(0.055, 0.055)
+sprite_frames = SubResource("EyeFrames")
+animation = &"googly"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Rect_brick")
+
+[node name="HitSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("8")
+volume_db = -4.0
