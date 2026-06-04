@@ -1,5 +1,14 @@
 [
   {
+    "id": "brickbreaker",
+    "title": "Brick Breaker",
+    "description": "Smash colorful googly-eyed bricks with a bouncing ball in this toy-block arcade game.",
+    "url": "./brickbreaker/index.html",
+    "icon": "./brickbreaker/index.icon.png",
+    "status": "Ready",
+    "accent": "#a3be8c"
+  },
+  {
     "id": "tic_tac_toe",
     "title": "Tic Tac Toe",
     "description": "Classic 3x3 play with a portrait-first layout built for the browser.",
@@ -25,14 +34,5 @@
     "icon": "./pai-do/index.icon.png",
     "status": "Prototype",
     "accent": "#b48766"
-  },
-  {
-    "id": "brickbreaker",
-    "title": "Brick Breaker",
-    "description": "Smash colorful googly-eyed bricks with a bouncing ball in this toy-block arcade game.",
-    "url": "./brickbreaker/index.html",
-    "icon": "./brickbreaker/index.icon.png",
-    "status": "Prototype",
-    "accent": "#a3be8c"
   }
 ]
