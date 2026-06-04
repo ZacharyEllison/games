@@ -2,7 +2,7 @@ extends Area2D
 
 signal collected(kind)
 
-enum Kind { MULTIBALL, SPLITTER, EXPLODER }
+enum Kind { MULTIBALL, SPLITTER, EXPLODER, ONE_UP }
 
 const ICON_BASE := "res://art/kenney_brick-pack/PNG/Default/Special/"
 
@@ -32,6 +32,9 @@ func _apply_icon() -> void:
 		Kind.EXPLODER:
 			sprite.texture = load(ICON_BASE + "extra_crate_explosive.png")
 			sprite.modulate = Color(1.0, 0.6, 0.25)
+		Kind.ONE_UP:
+			sprite.texture = load(ICON_BASE + "extra_character_a.png")
+			sprite.modulate = Color(0.35, 0.95, 0.45)
 		_:
 			sprite.texture = load(ICON_BASE + "extra_box_coin.png")
 			sprite.modulate = Color.WHITE

@@ -4,6 +4,7 @@ extends CharacterBody2D
 
 var screen := Vector2.ZERO
 var half_w := 64.0
+var half_h := 11.0
 
 @onready var shape: CollisionShape2D = $CollisionShape2D
 
@@ -11,9 +12,13 @@ func _ready() -> void:
 	add_to_group("paddle")
 	screen = get_viewport_rect().size
 	half_w = shape.shape.size.x * 0.5
+	half_h = shape.shape.size.y * 0.5
 
 func half_width() -> float:
 	return half_w
+
+func half_height() -> float:
+	return half_h
 
 func _physics_process(delta: float) -> void:
 	var axis := Input.get_axis("move_left", "move_right")

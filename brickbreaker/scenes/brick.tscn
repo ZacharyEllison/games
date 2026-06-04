@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scenes/brick.gd" id="1"]
 [ext_resource type="Texture2D" path="res://art/kenney_brick-pack/PNG/Default/Green/brick_high_2.png" id="2"]
@@ -7,8 +7,6 @@
 [ext_resource type="Texture2D" path="res://art/kenney_googly-eyes/PNG/googly-c.png" id="5"]
 [ext_resource type="Texture2D" path="res://art/kenney_googly-eyes/PNG/googly-d.png" id="6"]
 [ext_resource type="Texture2D" path="res://art/kenney_googly-eyes/PNG/googly-e.png" id="7"]
-[ext_resource type="AudioStream" path="res://audio/brick_click.wav" id="8"]
-
 [sub_resource type="RectangleShape2D" id="Rect_brick"]
 size = Vector2(64, 64)
 
@@ -58,7 +56,3 @@ animation = &"googly"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("Rect_brick")
-
-[node name="HitSound" type="AudioStreamPlayer" parent="."]
-stream = ExtResource("8")
-volume_db = -4.0

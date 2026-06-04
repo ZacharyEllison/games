@@ -11,8 +11,6 @@ var _broken := false
 @onready var eye_left: AnimatedSprite2D = $EyeLeft
 @onready var eye_right: AnimatedSprite2D = $EyeRight
 @onready var collision: CollisionShape2D = $CollisionShape2D
-@onready var hit_sound: AudioStreamPlayer = $HitSound
-
 var _eye_left_home := Vector2.ZERO
 var _eye_right_home := Vector2.ZERO
 
@@ -45,8 +43,7 @@ func on_hit() -> void:
 	if _broken:
 		return
 	hits += 1
-	hit_sound.pitch_scale = randf_range(0.65, 1.5)
-	hit_sound.play()
+	AudioManager.play_hit(randf_range(0.65, 1.5))
 	_jiggle()
 	if hits >= max_hits:
 		_break()
@@ -56,8 +53,7 @@ func on_hit() -> void:
 func shatter() -> void:
 	if _broken:
 		return
-	hit_sound.pitch_scale = randf_range(0.65, 1.5)
-	hit_sound.play()
+	AudioManager.play_hit(randf_range(0.65, 1.5))
 	_jiggle()
 	hits = max_hits
 	_break()

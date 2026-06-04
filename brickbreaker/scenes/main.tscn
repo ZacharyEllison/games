@@ -21,6 +21,6 @@ mouse_filter = 2
 [node name="BrickGrid" parent="." instance=ExtResource("4")]
 
 [node name="Paddle" parent="." instance=ExtResource("2")]
-position = Vector2(240, 660)
+position = Vector2(240, 612)
 
 [node name="HUD" parent="." instance=ExtResource("5")]

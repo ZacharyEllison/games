@@ -1,12 +1,14 @@
 extends CharacterBody2D
 
 signal lost
+signal nice_catch(pos: Vector2)
 
 enum Kind { NORMAL, SPLITTER, EXPLODER }
 
 @export var speed := 360.0
 @export var radius := 12.0
 @export var min_y_component := 0.35
+@export var max_speed := 600.0
 
 var kind := Kind.NORMAL
 var direction := Vector2.UP
@@ -48,21 +50,39 @@ func _physics_process(delta: float) -> void:
 	if not active:
 		return
 	var motion := direction * speed * delta
+	var approach_dir := direction
 	var collision := move_and_collide(motion)
 	if collision:
 		var normal := collision.get_normal()
-		direction = direction.bounce(normal).normalized()
 		var collider := collision.get_collider()
 		if collider:
 			if collider.is_in_group("paddle"):
-				var offset: float = (global_position.x - collider.global_position.x) / collider.half_width()
-				direction.x = clamp(direction.x + offset * 0.65, -0.9, 0.9)
-				direction.y = -abs(direction.y)
-				direction = direction.normalized()
-			elif collider.has_method("on_hit"):
-				collider.on_hit()
-				_on_brick_contact()
+				_handle_paddle_hit(collider, normal, approach_dir)
+			else:
+				direction = direction.bounce(normal).normalized()
+				if collider.has_method("on_hit"):
+					collider.on_hit()
+					_on_brick_contact()
 	_handle_walls()
+
+func _handle_paddle_hit(collider: Node, _normal: Vector2, approach_dir: Vector2) -> void:
+	var half_h: float = collider.half_height() if collider.has_method("half_height") else 11.0
+	# Only when the ball has slipped under the paddle (not side or top hits).
+	var paddle_bottom := collider.global_position.y + half_h
+	var is_catch: bool = (
+		approach_dir.y > 0.0
+		and global_position.y >= paddle_bottom - radius * 0.5
+	)
+	if is_catch:
+		direction.y = -abs(direction.y)
+		direction = direction.normalized()
+		speed = minf(speed * 1.5, max_speed)
+		nice_catch.emit(global_position)
+	else:
+		var offset: float = (global_position.x - collider.global_position.x) / collider.half_width()
+		direction.x = clamp(direction.x + offset * 0.65, -0.9, 0.9)
+		direction.y = -abs(direction.y)
+		direction = direction.normalized()
 
 func _on_brick_contact() -> void:
 	var game := get_tree().current_scene
