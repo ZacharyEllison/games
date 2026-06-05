@@ -58,17 +58,18 @@ func _physics_process(delta: float) -> void:
 		if collider:
 			if collider.is_in_group("paddle"):
 				_handle_paddle_hit(collider, normal, approach_dir)
-			else:
+			elif collider.is_in_group("walls"):
 				direction = direction.bounce(normal).normalized()
-				if collider.has_method("on_hit"):
-					collider.on_hit()
-					_on_brick_contact()
-	_handle_walls()
+			elif collider.has_method("on_hit"):
+				direction = direction.bounce(normal).normalized()
+				collider.on_hit()
+				_on_brick_contact()
+	_check_bottom_out()
 
 func _handle_paddle_hit(collider: Node, _normal: Vector2, approach_dir: Vector2) -> void:
 	var half_h: float = collider.half_height() if collider.has_method("half_height") else 11.0
 	# Only when the ball has slipped under the paddle (not side or top hits).
-	var paddle_bottom := collider.global_position.y + half_h
+	var paddle_bottom: float = collider.global_position.y + half_h
 	var is_catch: bool = (
 		approach_dir.y > 0.0
 		and global_position.y >= paddle_bottom - radius * 0.5
@@ -98,16 +99,8 @@ func _on_brick_contact() -> void:
 			kind = Kind.NORMAL
 			_apply_kind_visual()
 
-func _handle_walls() -> void:
-	if global_position.x < radius:
-		global_position.x = radius
-		direction.x = abs(direction.x)
-	elif global_position.x > screen.x - radius:
-		global_position.x = screen.x - radius
-		direction.x = -abs(direction.x)
-	if global_position.y < radius:
-		global_position.y = radius
-		direction.y = abs(direction.y)
+func _check_bottom_out() -> void:
+	screen = get_viewport_rect().size
 	if global_position.y > screen.y + radius * 4.0:
 		active = false
 		lost.emit()
