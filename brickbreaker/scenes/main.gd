@@ -1,6 +1,8 @@
 extends Node2D
 
-enum State { IDLE, PLAYING, LEVEL_CLEAR, GAME_OVER, PAUSED }
+enum State { IDLE, PLAYING, LEVEL_CLEAR, GAME_OVER, PAUSED, VICTORY }
+
+const MAX_LEVEL := 10
 
 const BALL_OFFSET := Vector2(0, -26)
 const BALL := preload("res://scenes/ball.tscn")
@@ -9,8 +11,10 @@ const POWERUP_CHANCE_BY_TIER := {
 	1: 0.033,
 	2: 0.165,
 	3: 0.33,
+	4: 0.40,
+	5: 0.45,
 }
-# Tier 1 (green): ONE_UP weighted higher; tiers 2–3 equal across 4 kinds.
+# Tier 1 (blue): ONE_UP weighted higher; tiers 2–5 equal across 4 kinds.
 const ONE_UP_WEIGHT_TIER1 := 0.35
 const OTHER_WEIGHT_TIER1 := 0.217
 const WEIGHT_TIER_OTHER := 0.25
@@ -60,6 +64,7 @@ func _new_game() -> void:
 	hud.set_lives(lives)
 	hud.hide_message()
 	hud.hide_game_over()
+	hud.hide_victory()
 	hud.set_pause_menu_visible(false, max_unlocked_level)
 	_start_level()
 
@@ -108,7 +113,7 @@ func _process(_delta: float) -> void:
 			held_ball = null
 			state = State.PLAYING
 			hud.hide_tap_prompt()
-	elif state == State.GAME_OVER:
+	elif state == State.GAME_OVER or state == State.VICTORY:
 		if Input.is_action_just_pressed("press"):
 			_new_game()
 
@@ -210,7 +215,12 @@ func _on_level_cleared() -> void:
 		hud.set_score(score)
 		hud.show_perfect()
 		hud.slam_score()
-	max_unlocked_level = maxi(max_unlocked_level, level + 1)
+	max_unlocked_level = mini(maxi(max_unlocked_level, level + 1), MAX_LEVEL)
+	if level >= MAX_LEVEL:
+		state = State.VICTORY
+		hud.hide_tap_prompt()
+		hud.show_victory(score)
+		return
 	hud.show_message("LEVEL %d" % (level + 1))
 	await get_tree().create_timer(1.2).timeout
 	hud.hide_message()
@@ -252,6 +262,7 @@ func _on_level_selected(selected_level: int) -> void:
 	_level_points = 0
 	hud.hide_message()
 	hud.hide_game_over()
+	hud.hide_victory()
 	_start_level()
 
 func _clear_balls() -> void:

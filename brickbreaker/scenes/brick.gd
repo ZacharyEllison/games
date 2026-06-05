@@ -4,7 +4,7 @@ signal destroyed(points, pos, tier)
 
 var max_hits := 1
 var hits := 0
-var textures: Array = []
+var stages: Array = []
 var _broken := false
 
 @onready var body: Sprite2D = $Body
@@ -27,17 +27,20 @@ func _start_eye(eye: AnimatedSprite2D) -> void:
 	eye.play(&"googly")
 	eye.frame = randi() % eye.sprite_frames.get_frame_count(&"googly")
 
-func setup(hit_count: int, tier_textures: Array) -> void:
+func setup(hit_count: int, stage_data: Array) -> void:
 	max_hits = max(1, hit_count)
-	textures = tier_textures
+	stages = stage_data
+	hits = 0
 	if is_inside_tree():
 		_refresh_texture()
 
 func _refresh_texture() -> void:
-	if textures.is_empty():
+	if stages.is_empty():
 		return
-	var index := clampi(hits, 0, textures.size() - 1)
-	body.texture = textures[index]
+	var index := clampi(hits, 0, stages.size() - 1)
+	var stage: Dictionary = stages[index]
+	body.texture = stage.texture
+	body.modulate = stage.get("modulate", Color.WHITE)
 
 func on_hit() -> void:
 	if _broken:

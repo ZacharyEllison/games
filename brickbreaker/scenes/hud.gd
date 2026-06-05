@@ -2,6 +2,7 @@ extends CanvasLayer
 
 const RAINBOW_SHADER := preload("res://shaders/rainbow_shimmer.gdshader")
 const COMIC_FONT := preload("res://fonts/ComicNeue-Bold.ttf")
+const MAX_LEVEL := 10
 
 @onready var score_label: Label = $Score
 @onready var lives_label: Label = $Lives
@@ -99,6 +100,25 @@ func hide_game_over() -> void:
 	game_over_panel.hide()
 	message.hide()
 
+func show_victory(score: int) -> void:
+	hide_tap_prompt()
+	hide_game_over()
+	message.text = "YOU WIN!"
+	message.show()
+	_slam_in(message, 0.4)
+	game_over_panel.show()
+	final_score.text = "SCORE %d" % score
+	final_score.material = null
+	bang_backdrop.hide()
+	if score > 2000:
+		bang_backdrop.show()
+	if score > 1000:
+		final_score.material = _rainbow_mat
+	_slam_in(final_score, 0.3)
+
+func hide_victory() -> void:
+	hide_game_over()
+
 func show_perfect() -> void:
 	perfect_badge.show()
 	perfect_badge.material = _gold_mat
@@ -140,16 +160,20 @@ func set_pause_menu_visible(visible: bool, max_level: int) -> void:
 		pause_overlay.hide()
 		level_select_panel.hide()
 
-func _build_level_buttons(max_level: int) -> void:
+func _build_level_buttons(max_unlocked: int) -> void:
 	for child in level_select_grid.get_children():
 		child.queue_free()
-	for i in range(1, max_level + 1):
+	for i in range(1, MAX_LEVEL + 1):
 		var btn := Button.new()
 		btn.text = str(i)
 		btn.add_theme_font_override("font", COMIC_FONT)
 		btn.custom_minimum_size = Vector2(52, 44)
-		var lvl := i
-		btn.pressed.connect(func(): level_selected.emit(lvl))
+		var unlocked := i <= max_unlocked
+		btn.disabled = not unlocked
+		btn.modulate = Color.WHITE if unlocked else Color(0.45, 0.45, 0.5, 0.85)
+		if unlocked:
+			var lvl := i
+			btn.pressed.connect(func(): level_selected.emit(lvl))
 		level_select_grid.add_child(btn)
 
 func _show_level_select() -> void:
