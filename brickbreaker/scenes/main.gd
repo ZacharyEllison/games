@@ -127,13 +127,10 @@ func _on_powerup_collected(kind: int, pos: Vector2) -> void:
 			hud.set_lives(game_state.lives)
 
 func _on_level_cleared() -> void:
-	if game_state.state != 1:  # PLAYING
-		return
 	game_state.state = 2  # LEVEL_CLEAR
 	hud.hide_tap_prompt()
 	ball_manager.clear_all()
 	powerup_manager.clear_all()
-	# Check perfect
 	if game_state._lives_lost_this_level == 0 and level_manager.current_level == 1:
 		hud.show_perfect()
 	level_manager.on_level_cleared(grid, hud)
