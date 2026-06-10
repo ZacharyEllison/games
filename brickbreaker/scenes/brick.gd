@@ -1,10 +1,8 @@
 extends StaticBody2D
 
 signal destroyed(points, pos, tier)
-signal broken(pos: Vector2, tier: int)
 
 var tier := 1
-var _broken := false
 
 @onready var body: Sprite2D = $Body
 @onready var eye_left: AnimatedSprite2D = $EyeLeft
@@ -56,18 +54,18 @@ func _refresh_texture() -> void:
 			body.modulate = Color.WHITE
 
 func on_hit() -> void:
-	if _broken:
-		return
 	AudioManager.play_hit(randf_range(0.65, 1.5))
 	_jiggle()
-	_break()
+	tier -= 1
+	if tier <= 0:
+		_destroy()
+	else:
+		_refresh_texture()
 
 func shatter() -> void:
-	if _broken:
-		return
 	AudioManager.play_hit(randf_range(0.65, 1.5))
 	_jiggle()
-	_break()
+	_destroy()
 
 func _jiggle() -> void:
 	var dir: float = [-1.0, 1.0].pick_random()
@@ -90,13 +88,9 @@ func _jiggle_eye(eye: AnimatedSprite2D, home: Vector2) -> void:
 	pos_tween.tween_interval(delay)
 	pos_tween.tween_property(eye, "position", home, 0.45).from(home + Vector2(randf_range(-5.0, 5.0), randf_range(-7.0, -3.0)))
 
-func _break() -> void:
-	if _broken:
-		return
-	_broken = true
+func _destroy() -> void:
 	collision.set_deferred("disabled", true)
 	destroyed.emit(10 * tier, global_position, tier)
-	broken.emit(global_position, tier)
 	var tween := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	tween.tween_property(self, "scale", Vector2.ZERO, 0.2)
 	tween.tween_callback(queue_free)

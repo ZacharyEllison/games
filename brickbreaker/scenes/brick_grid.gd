@@ -3,9 +3,6 @@ extends Node2D
 # Emitted when any brick is destroyed (for scoring/powerups in main.gd).
 signal destroyed(points, pos, tier)
 
-# Emitted when any brick breaks (for cascade spawning in this grid).
-signal broken(pos: Vector2, tier: int)
-
 # Emitted when all bricks in the level are gone.
 signal cleared
 
@@ -20,7 +17,7 @@ const COLS := 6
 const TOP_MARGIN := 84.0
 
 # Column-based level layouts. Each column has a starting tier (1–5).
-# Bricks cascade down: red→orange→yellow→green→blue→gone.
+# Bricks cycle sprite downward on hit instead of spawning new bricks.
 const LEVEL_LAYOUTS: Array[Dictionary] = [
 	{}, # placeholder for 0-index
 	{"cols": [1, 1, 1, 1, 1, 1]}, # L1: 6 blue = 60
@@ -47,8 +44,8 @@ func build_level(level: int) -> void:
 	_live_count = 0
 	for c in COLS:
 		var tier: int = layout.cols[c]
-		for t in range(tier, 0, -1):
-			_spawn_brick(tier, start_x + c * (BRICK_W + SPACING), TOP_MARGIN + (tier - t) * (BRICK_H + SPACING))
+		var x := start_x + c * (BRICK_W + SPACING)
+		_spawn_brick(tier, x, TOP_MARGIN)
 
 func _spawn_brick(tier: int, x: float, y: float) -> void:
 	var brick := BRICK.instantiate()
@@ -56,7 +53,6 @@ func _spawn_brick(tier: int, x: float, y: float) -> void:
 	brick.position = Vector2(x, y)
 	brick.setup(tier)
 	brick.destroyed.connect(_on_brick_destroyed)
-	brick.broken.connect(_on_brick_broken)
 	_live_count += 1
 
 func _on_brick_destroyed(points: int, pos: Vector2, tier: int) -> void:
@@ -64,12 +60,6 @@ func _on_brick_destroyed(points: int, pos: Vector2, tier: int) -> void:
 	destroyed.emit(points, pos, tier)
 	if _live_count <= 0:
 		cleared.emit()
-
-func _on_brick_broken(pos: Vector2, tier: int) -> void:
-	# Cascade: spawn a smaller brick below the destroyed one.
-	if tier > 1:
-		_live_count += 1
-		_spawn_brick(tier - 1, pos.x, pos.y + BRICK_H + SPACING)
 
 func _clear() -> void:
 	for child in get_children():
