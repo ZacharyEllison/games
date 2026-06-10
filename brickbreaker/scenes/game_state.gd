@@ -2,12 +2,6 @@ extends Node2D
 
 signal score_changed(value: int)
 signal lives_changed(value: int)
-signal state_changed(new_state: State)
-signal ball_lost(ball: Node)
-signal brick_destroyed(points: int, pos: Vector2, tier: int)
-signal brick_hit(points: int, pos: Vector2, tier: int)
-signal level_cleared
-signal nice_catch(pos: Vector2)
 
 enum State { IDLE, PLAYING, LEVEL_CLEAR, GAME_OVER, PAUSED, VICTORY }
 
@@ -45,10 +39,8 @@ func lose_ball() -> void:
 		lives_changed.emit(lives)
 		if lives <= 0:
 			state = State.GAME_OVER
-			state_changed.emit(state)
 		else:
 			state = State.IDLE
-			state_changed.emit(state)
 
 func get_powerup_kind(tier: int) -> int:
 	if tier == 1:

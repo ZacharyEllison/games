@@ -18,7 +18,7 @@ func start_level(level: int, grid: Node2D, paddle: CharacterBody2D, screen: Vect
 	level_start.emit(level)
 
 func on_level_cleared(grid: Node2D, hud: CanvasLayer) -> void:
-	max_unlocked_level = mini(maxi(max_unlocked_level, current_level + 1), MAX_LEVEL)
+	max_unlocked_level = min(max(max_unlocked_level, current_level + 1), MAX_LEVEL)
 	if current_level >= MAX_LEVEL:
 		return
 	hud.show_message("LEVEL %d" % (current_level + 1))
