@@ -1,14 +1,5 @@
 [
   {
-    "id": "wordle",
-    "title": "Wordle",
-    "description": "Daily five-letter puzzle with Nord styling, keyboard flair, and local streak scoring.",
-    "url": "./wordle/index.html",
-    "icon": "./wordle/icon.svg",
-    "status": "Ready",
-    "accent": "#88c0d0"
-  },
-  {
     "id": "brickbreaker",
     "title": "Brick Breaker",
     "description": "Smash colorful googly-eyed bricks with a bouncing ball in this toy-block arcade game.",

@@ -1,8 +1,8 @@
 extends Node2D
-
 # Emitted when any brick is destroyed (for scoring/powerups in main.gd).
 signal destroyed(points, pos, tier)
-
+# Emitted when any brick is hit (score increases, tier may demote).
+signal hit(points, pos, tier)
 # Emitted when all bricks in the level are gone.
 signal cleared
 
@@ -53,6 +53,7 @@ func _spawn_brick(tier: int, x: float, y: float) -> void:
 	brick.position = Vector2(x, y)
 	brick.setup(tier)
 	brick.destroyed.connect(_on_brick_destroyed)
+	brick.hit.connect(_on_brick_hit)
 	_live_count += 1
 
 func _on_brick_destroyed(points: int, pos: Vector2, tier: int) -> void:
@@ -60,6 +61,9 @@ func _on_brick_destroyed(points: int, pos: Vector2, tier: int) -> void:
 	destroyed.emit(points, pos, tier)
 	if _live_count <= 0:
 		cleared.emit()
+
+func _on_brick_hit(points: int, pos: Vector2, tier: int) -> void:
+	hit.emit(points, pos, tier)
 
 func _clear() -> void:
 	for child in get_children():

@@ -1,6 +1,6 @@
 extends StaticBody2D
-
 signal destroyed(points, pos, tier)
+signal hit(points, pos, tier)
 
 var tier := 1
 
@@ -56,6 +56,7 @@ func _refresh_texture() -> void:
 func on_hit() -> void:
 	AudioManager.play_hit(randf_range(0.65, 1.5))
 	_jiggle()
+	hit.emit(10 * tier, global_position, tier)
 	tier -= 1
 	if tier <= 0:
 		_destroy()

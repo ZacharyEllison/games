@@ -1,35 +1,11 @@
 extends Node2D
 
-enum State { IDLE, PLAYING, LEVEL_CLEAR, GAME_OVER, PAUSED, VICTORY }
-
-const MAX_LEVEL := 10
-
-const BALL_OFFSET := Vector2(0, -26)
-const BALL := preload("res://scenes/ball.tscn")
-const POWERUP := preload("res://scenes/powerup.tscn")
-const POWERUP_CHANCE_BY_TIER := {
-	1: 0.033,
-	2: 0.165,
-	3: 0.33,
-	4: 0.40,
-	5: 0.45,
-}
-# Tier 1 (blue): ONE_UP weighted higher; tiers 2–5 equal across 4 kinds.
-const ONE_UP_WEIGHT_TIER1 := 0.35
-const OTHER_WEIGHT_TIER1 := 0.217
-const WEIGHT_TIER_OTHER := 0.25
-
-var state := State.IDLE
-var level := 1
-var score := 0
-var lives := 3
-var balls_in_play := 0
-var base_ball_speed := 330.0
-var max_unlocked_level := 1
-var held_ball: CharacterBody2D = null
-
-var _lives_lost_this_level := 0
-var _paddle_y := 612.0
+@onready var game_state: Node2D = $GameState
+@onready var ball_manager: Node2D = $BallManager
+@onready var powerup_manager: Node2D = $PowerupManager
+@onready var level_manager: Node2D = $LevelManager
+@onready var pause_manager: Node2D = $PauseManager
+@onready var input_manager: Node2D = $InputManager
 
 @onready var paddle: CharacterBody2D = $Paddle
 @onready var grid: Node2D = $BrickGrid
@@ -37,230 +13,130 @@ var _paddle_y := 612.0
 
 func _ready() -> void:
 	randomize()
-	var screen := get_viewport_rect().size
-	_paddle_y = screen.y * 0.85
-	paddle.global_position = Vector2(screen.x * 0.5, _paddle_y)
-	grid.destroyed.connect(_on_brick_destroyed)
-	grid.cleared.connect(_on_level_cleared)
-	hud.pause_requested.connect(_on_pause_requested)
-	hud.resume_requested.connect(_on_resume_requested)
-	hud.restart_requested.connect(_on_restart_from_pause)
-	hud.level_selected.connect(_on_level_selected)
+	_wire_signals()
 	_new_game()
 
-func _paddle_y_for_screen() -> float:
-	return get_viewport_rect().size.y * 0.85
+func _wire_signals() -> void:
+	# GameState wiring
+	game_state.score_changed.connect(hud.set_score)
+	game_state.lives_changed.connect(hud.set_lives)
+	game_state.ball_lost.connect(_on_ball_lost)
+
+	# BallManager wiring
+	ball_manager.ball_spawned.connect(_on_ball_spawned)
+	ball_manager.ball_lost.connect(game_state.lose_ball)
+	ball_manager.nice_catch.connect(func(p): hud.show_slam_text("NICE CATCH!", p))
+
+	# PowerupManager wiring
+	powerup_manager.on_collected.connect(_on_powerup_collected)
+
+	# LevelManager wiring
+	grid.cleared.connect(_on_level_cleared)
+
+	# PauseManager wiring
+	pause_manager.pause_requested.connect(_on_pause_requested)
+	pause_manager.resume_requested.connect(_on_resume_requested)
+	pause_manager.restart_requested.connect(_on_restart_requested)
+	pause_manager.level_selected.connect(_on_level_selected)
+
+	# InputManager wiring
+	input_manager.pause_toggle.connect(_on_pause_toggle)
+	input_manager.launch_held_ball.connect(_on_launch_held)
+	input_manager.restart_game.connect(_new_game)
 
 func _new_game() -> void:
-	get_tree().paused = false
-	level = 1
-	score = 0
-	lives = 3
-	max_unlocked_level = 1
-	_lives_lost_this_level = 0
-	hud.set_score(score)
-	hud.set_lives(lives)
+	game_state.reset()
+	hud.set_score(0)
+	hud.set_lives(3)
 	hud.hide_message()
 	hud.hide_game_over()
 	hud.hide_victory()
-	hud.set_pause_menu_visible(false, max_unlocked_level)
+	hud.set_pause_menu_visible(false, 1)
 	_start_level()
 
 func _start_level() -> void:
-	_clear_balls()
-	_clear_powerups()
-	_paddle_y = _paddle_y_for_screen()
-	paddle.global_position = Vector2(get_viewport_rect().size.x * 0.5, _paddle_y)
-	grid.build_level(level)
-	base_ball_speed = (300.0 + (level - 1) * 35.0) * 1.1
-	_lives_lost_this_level = 0
-	_spawn_held_ball()
-	state = State.IDLE
+	ball_manager.clear_all()
+	powerup_manager.clear_all()
+	paddle.global_position = Vector2(get_viewport_rect().size.x * 0.5, get_viewport_rect().size.y * 0.85)
+	level_manager.start_level(1, grid, paddle, get_viewport_rect().size)
+	ball_manager.spawn_held_ball()
+	game_state.state = 0  # IDLE
 	hud.show_tap_prompt()
 
-func _make_ball(kind: int, speed_scale: float = 1.0) -> CharacterBody2D:
-	var ball: CharacterBody2D = BALL.instantiate()
-	add_child(ball)
-	ball.speed = base_ball_speed * speed_scale
-	ball.set_kind(kind)
-	ball.lost.connect(_on_ball_lost.bind(ball))
-	ball.nice_catch.connect(_on_nice_catch)
-	return ball
-
-func _spawn_held_ball() -> void:
-	held_ball = _make_ball(0)
-	held_ball.active = false
-
-func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("pause"):
-		if state == State.PLAYING or state == State.IDLE:
-			_pause_game()
-		elif state == State.PAUSED:
-			_on_resume_requested()
-
 func _process(_delta: float) -> void:
-	if state == State.PAUSED:
-		return
-	if state == State.IDLE and is_instance_valid(held_ball):
-		held_ball.global_position = paddle.global_position + BALL_OFFSET
-		if Input.is_action_just_pressed("press"):
-			AudioManager.unlock()
-			held_ball.launch(Vector2(randf_range(-0.35, 0.35), -1.0))
-			balls_in_play = 1
-			held_ball = null
-			state = State.PLAYING
-			hud.hide_tap_prompt()
-	elif state == State.GAME_OVER or state == State.VICTORY:
+	if game_state.state == 1 or game_state.state == 0:  # PLAYING or IDLE
+		if is_instance_valid(ball_manager.held_ball):
+			ball_manager.held_ball.global_position = paddle.global_position + Vector2(0, -26)
+			if Input.is_action_just_pressed("press") and game_state.state == 0:
+				AudioManager.unlock()
+				_on_launch_held()
+	elif game_state.state == 3 or game_state.state == 5:  # GAME_OVER or VICTORY
 		if Input.is_action_just_pressed("press"):
 			_new_game()
 
-func spawn_extra_balls(pos: Vector2, count: int, speed_scale: float = 1.0) -> void:
-	if state != State.PLAYING:
-		return
-	for i in count:
-		var ball := _make_ball(0, speed_scale)
-		ball.global_position = pos
-		var angle := randf_range(-0.9, 0.9)
-		ball.launch(Vector2(sin(angle), -cos(angle)))
-		balls_in_play += 1
-
-func explode_at(pos: Vector2, radius: float) -> void:
-	for brick in get_tree().get_nodes_in_group("bricks"):
-		if is_instance_valid(brick) and brick.global_position.distance_to(pos) <= radius:
-			brick.shatter()
-
-func _on_nice_catch(pos: Vector2) -> void:
-	hud.show_slam_text("NICE CATCH!", pos)
-
-func _on_ball_lost(ball: Node) -> void:
-	if is_instance_valid(ball):
-		ball.queue_free()
-	balls_in_play -= 1
-	if state != State.PLAYING:
-		return
-	if balls_in_play <= 0:
-		balls_in_play = 0
-		lives -= 1
-		_lives_lost_this_level += 1
-		hud.set_lives(lives)
-		if lives <= 0:
-			state = State.GAME_OVER
-			hud.hide_tap_prompt()
-			hud.show_game_over(score)
-		else:
-			_clear_powerups()
-			_spawn_held_ball()
-			state = State.IDLE
-			hud.show_tap_prompt()
-
-func _on_brick_destroyed(points: int, pos: Vector2, tier: int) -> void:
-	score += points
-	hud.set_score(score)
-	var chance: float = POWERUP_CHANCE_BY_TIER.get(tier, 0.03)
-	if randf() < chance:
-		_drop_powerup(pos, tier)
-
-func _pick_powerup_kind(tier: int) -> int:
-	if tier == 1:
-		var roll := randf()
-		if roll < ONE_UP_WEIGHT_TIER1:
-			return 3
-		roll -= ONE_UP_WEIGHT_TIER1
-		if roll < OTHER_WEIGHT_TIER1:
-			return 0
-		roll -= OTHER_WEIGHT_TIER1
-		if roll < OTHER_WEIGHT_TIER1:
-			return 1
-		return 2
-	return randi() % 4
-
-func _drop_powerup(pos: Vector2, tier: int) -> void:
-	var powerup: Area2D = POWERUP.instantiate()
-	add_child(powerup)
-	powerup.global_position = pos
-	powerup.set_kind(_pick_powerup_kind(tier))
-	powerup.collected.connect(_on_powerup_collected)
-
-func _on_powerup_collected(kind: int) -> void:
-	match kind:
-		0: # MULTIBALL
-			var positions: Array = []
-			for ball in get_tree().get_nodes_in_group("balls"):
-				positions.append(ball.global_position)
-			for pos in positions:
-				spawn_extra_balls(pos, 2, 0.85)
-		1: # SPLITTER
-			for ball in get_tree().get_nodes_in_group("balls"):
-				ball.set_kind(1)
-		2: # EXPLODER
-			for ball in get_tree().get_nodes_in_group("balls"):
-				ball.set_kind(2)
-		3: # ONE_UP
-			lives += 1
-			hud.set_lives(lives)
-
-func _on_level_cleared() -> void:
-	if state != State.PLAYING:
-		return
-	state = State.LEVEL_CLEAR
-	hud.hide_tap_prompt()
-	_clear_balls()
-	_clear_powerups()
-	max_unlocked_level = mini(maxi(max_unlocked_level, level + 1), MAX_LEVEL)
-	if level >= MAX_LEVEL:
-		state = State.VICTORY
-		hud.hide_tap_prompt()
-		hud.show_victory(score)
-		return
-	hud.show_message("LEVEL %d" % (level + 1))
-	await get_tree().create_timer(1.2).timeout
-	hud.hide_message()
-	level += 1
-	_start_level()
-
-func _pause_game() -> void:
-	if state != State.PLAYING and state != State.IDLE:
-		return
-	state = State.PAUSED
-	get_tree().paused = true
-	hud.hide_tap_prompt()
-	hud.set_pause_menu_visible(true, max_unlocked_level)
+# Delegate handlers
+func _on_pause_toggle() -> void:
+	if get_tree().paused:
+		pause_manager.request_resume()
+	else:
+		pause_manager.request_pause(game_state.state)
 
 func _on_pause_requested() -> void:
-	_pause_game()
+	get_tree().paused = true
+	hud.set_pause_menu_visible(true, level_manager.max_unlocked_level)
 
 func _on_resume_requested() -> void:
-	if state != State.PAUSED:
-		return
 	get_tree().paused = false
-	hud.set_pause_menu_visible(false, max_unlocked_level)
-	if is_instance_valid(held_ball):
-		state = State.IDLE
+	hud.set_pause_menu_visible(false, level_manager.max_unlocked_level)
+	if is_instance_valid(ball_manager.held_ball):
+		game_state.state = 0  # IDLE
 		hud.show_tap_prompt()
 	else:
-		state = State.PLAYING
+		game_state.state = 1  # PLAYING
 
-func _on_restart_from_pause() -> void:
+func _on_restart_requested() -> void:
 	get_tree().paused = false
-	hud.set_pause_menu_visible(false, max_unlocked_level)
+	hud.set_pause_menu_visible(false, level_manager.max_unlocked_level)
 	_new_game()
 
-func _on_level_selected(selected_level: int) -> void:
+func _on_level_selected(level: int) -> void:
 	get_tree().paused = false
-	hud.set_pause_menu_visible(false, max_unlocked_level)
-	level = selected_level
-	_lives_lost_this_level = 0
-	hud.hide_message()
-	hud.hide_game_over()
-	hud.hide_victory()
-	_start_level()
+	hud.set_pause_menu_visible(false, level_manager.max_unlocked_level)
+	level_manager.select_level(level, grid, paddle, get_viewport_rect().size)
 
-func _clear_balls() -> void:
-	held_ball = null
-	for ball in get_tree().get_nodes_in_group("balls"):
-		ball.queue_free()
-	balls_in_play = 0
+func _on_ball_lost(_ball: Node) -> void:
+	if is_instance_valid(_ball):
+		_ball.queue_free()
 
-func _clear_powerups() -> void:
-	for powerup in get_tree().get_nodes_in_group("powerups"):
-		powerup.queue_free()
+func _on_ball_spawned(_ball: CharacterBody2D) -> void:
+	pass
+
+func _on_powerup_collected(kind: int, pos: Vector2) -> void:
+	match kind:
+		0:  # MULTIBALL
+			ball_manager.spawn_extra_balls(pos, 2, 0.85)
+		1:  # SPLITTER
+			for ball in get_tree().get_nodes_in_group("balls"):
+				ball.set_kind(1)
+		2:  # EXPLODER
+			for brick in get_tree().get_nodes_in_group("bricks"):
+				if is_instance_valid(brick) and brick.global_position.distance_to(pos) <= 95.0:
+					brick.shatter()
+		3:  # ONE_UP
+			game_state.lives += 1
+			hud.set_lives(game_state.lives)
+
+func _on_level_cleared() -> void:
+	if game_state.state != 1:  # PLAYING
+		return
+	game_state.state = 2  # LEVEL_CLEAR
+	hud.hide_tap_prompt()
+	ball_manager.clear_all()
+	powerup_manager.clear_all()
+	# Check perfect
+	if game_state._lives_lost_this_level == 0 and level_manager.current_level == 1:
+		hud.show_perfect()
+	level_manager.on_level_cleared(grid, hud)
+
+func _on_launch_held() -> void:
+	ball_manager.launch_held()
