@@ -29,7 +29,6 @@ var max_unlocked_level := 1
 var held_ball: CharacterBody2D = null
 
 var _lives_lost_this_level := 0
-var _level_points := 0
 var _paddle_y := 612.0
 
 @onready var paddle: CharacterBody2D = $Paddle
@@ -41,7 +40,7 @@ func _ready() -> void:
 	var screen := get_viewport_rect().size
 	_paddle_y = screen.y * 0.85
 	paddle.global_position = Vector2(screen.x * 0.5, _paddle_y)
-	grid.brick_destroyed.connect(_on_brick_destroyed)
+	grid.destroyed.connect(_on_brick_destroyed)
 	grid.cleared.connect(_on_level_cleared)
 	hud.pause_requested.connect(_on_pause_requested)
 	hud.resume_requested.connect(_on_resume_requested)
@@ -59,7 +58,6 @@ func _new_game() -> void:
 	lives = 3
 	max_unlocked_level = 1
 	_lives_lost_this_level = 0
-	_level_points = 0
 	hud.set_score(score)
 	hud.set_lives(lives)
 	hud.hide_message()
@@ -76,7 +74,6 @@ func _start_level() -> void:
 	grid.build_level(level)
 	base_ball_speed = (300.0 + (level - 1) * 35.0) * 1.1
 	_lives_lost_this_level = 0
-	_level_points = 0
 	_spawn_held_ball()
 	state = State.IDLE
 	hud.show_tap_prompt()
@@ -158,7 +155,6 @@ func _on_ball_lost(ball: Node) -> void:
 
 func _on_brick_destroyed(points: int, pos: Vector2, tier: int) -> void:
 	score += points
-	_level_points += points
 	hud.set_score(score)
 	var chance: float = POWERUP_CHANCE_BY_TIER.get(tier, 0.03)
 	if randf() < chance:
@@ -210,11 +206,6 @@ func _on_level_cleared() -> void:
 	hud.hide_tap_prompt()
 	_clear_balls()
 	_clear_powerups()
-	if _lives_lost_this_level == 0 and _level_points > 0:
-		score += _level_points
-		hud.set_score(score)
-		hud.show_perfect()
-		hud.slam_score()
 	max_unlocked_level = mini(maxi(max_unlocked_level, level + 1), MAX_LEVEL)
 	if level >= MAX_LEVEL:
 		state = State.VICTORY
@@ -259,7 +250,6 @@ func _on_level_selected(selected_level: int) -> void:
 	hud.set_pause_menu_visible(false, max_unlocked_level)
 	level = selected_level
 	_lives_lost_this_level = 0
-	_level_points = 0
 	hud.hide_message()
 	hud.hide_game_over()
 	hud.hide_victory()

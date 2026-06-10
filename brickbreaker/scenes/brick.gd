@@ -1,10 +1,9 @@
 extends StaticBody2D
 
 signal destroyed(points, pos, tier)
+signal broken(pos: Vector2, tier: int)
 
-var max_hits := 1
-var hits := 0
-var stages: Array = []
+var tier := 1
 var _broken := false
 
 @onready var body: Sprite2D = $Body
@@ -13,6 +12,13 @@ var _broken := false
 @onready var collision: CollisionShape2D = $CollisionShape2D
 var _eye_left_home := Vector2.ZERO
 var _eye_right_home := Vector2.ZERO
+
+var _tex_blue: Texture2D = load("res://art/kenney_brick-pack/PNG/Default/Blue/brick_high_2.png")
+var _tex_green: Texture2D = load("res://art/kenney_brick-pack/PNG/Default/Green/brick_high_2.png")
+var _tex_yellow: Texture2D = load("res://art/kenney_brick-pack/PNG/Default/Yellow/brick_high_2.png")
+var _tex_red: Texture2D = load("res://art/kenney_brick-pack/PNG/Default/Red/brick_high_2.png")
+
+const ORANGE_MODULATE := Color(1.0, 0.58, 0.12)
 
 func _ready() -> void:
 	add_to_group("bricks")
@@ -27,38 +33,40 @@ func _start_eye(eye: AnimatedSprite2D) -> void:
 	eye.play(&"googly")
 	eye.frame = randi() % eye.sprite_frames.get_frame_count(&"googly")
 
-func setup(hit_count: int, stage_data: Array) -> void:
-	max_hits = max(1, hit_count)
-	stages = stage_data
-	hits = 0
-	if is_inside_tree():
-		_refresh_texture()
+func setup(t: int) -> void:
+	tier = t
+	_refresh_texture()
 
 func _refresh_texture() -> void:
-	if stages.is_empty():
-		return
-	var index := clampi(hits, 0, stages.size() - 1)
-	var stage: Dictionary = stages[index]
-	body.texture = stage.texture
-	body.modulate = stage.get("modulate", Color.WHITE)
+	match tier:
+		2:
+			body.texture = _tex_green
+			body.modulate = Color.WHITE
+		3:
+			body.texture = _tex_yellow
+			body.modulate = Color.WHITE
+		4:
+			body.texture = _tex_yellow
+			body.modulate = ORANGE_MODULATE
+		5:
+			body.texture = _tex_red
+			body.modulate = Color.WHITE
+		_:
+			body.texture = _tex_blue
+			body.modulate = Color.WHITE
 
 func on_hit() -> void:
 	if _broken:
 		return
-	hits += 1
 	AudioManager.play_hit(randf_range(0.65, 1.5))
 	_jiggle()
-	if hits >= max_hits:
-		_break()
-	else:
-		_refresh_texture()
+	_break()
 
 func shatter() -> void:
 	if _broken:
 		return
 	AudioManager.play_hit(randf_range(0.65, 1.5))
 	_jiggle()
-	hits = max_hits
 	_break()
 
 func _jiggle() -> void:
@@ -87,7 +95,8 @@ func _break() -> void:
 		return
 	_broken = true
 	collision.set_deferred("disabled", true)
-	destroyed.emit(max_hits * 10, global_position, max_hits)
+	destroyed.emit(10 * tier, global_position, tier)
+	broken.emit(global_position, tier)
 	var tween := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	tween.tween_property(self, "scale", Vector2.ZERO, 0.2)
 	tween.tween_callback(queue_free)

@@ -1,6 +1,12 @@
 extends Node2D
 
-signal brick_destroyed(points, pos, tier)
+# Emitted when any brick is destroyed (for scoring/powerups in main.gd).
+signal destroyed(points, pos, tier)
+
+# Emitted when any brick breaks (for cascade spawning in this grid).
+signal broken(pos: Vector2, tier: int)
+
+# Emitted when all bricks in the level are gone.
 signal cleared
 
 const BRICK := preload("res://scenes/brick.tscn")
@@ -13,102 +19,57 @@ const SPACING := 4.0
 const COLS := 6
 const TOP_MARGIN := 84.0
 
-const ORANGE_MODULATE := Color(1.0, 0.58, 0.12)
-
-enum Roygb { BLUE, GREEN, YELLOW, ORANGE, RED }
-
-# Row colors top to bottom (row 0 = top of screen).
-const LEVEL_LAYOUTS: Dictionary = {
-	1: [Roygb.BLUE, Roygb.BLUE],
-	2: [Roygb.GREEN, Roygb.BLUE, Roygb.BLUE],
-	3: [Roygb.YELLOW, Roygb.GREEN, Roygb.BLUE, Roygb.BLUE],
-	4: [Roygb.YELLOW, Roygb.GREEN, Roygb.GREEN, Roygb.BLUE],
-	5: [Roygb.YELLOW, Roygb.YELLOW, Roygb.GREEN, Roygb.GREEN, Roygb.BLUE],
-	6: [Roygb.ORANGE, Roygb.YELLOW, Roygb.GREEN, Roygb.GREEN, Roygb.BLUE],
-	7: [Roygb.ORANGE, Roygb.YELLOW, Roygb.YELLOW, Roygb.GREEN, Roygb.BLUE],
-	8: [Roygb.ORANGE, Roygb.ORANGE, Roygb.YELLOW, Roygb.GREEN, Roygb.BLUE],
-	9: [Roygb.RED, Roygb.ORANGE, Roygb.YELLOW, Roygb.GREEN, Roygb.BLUE],
-	10: [Roygb.RED, Roygb.ORANGE, Roygb.YELLOW, Roygb.GREEN, Roygb.GREEN],
-}
-
-# Damage progression per tier (hits taken indexes into this list).
-const TIER_PROGRESSION: Dictionary = {
-	1: [Roygb.BLUE],
-	2: [Roygb.GREEN, Roygb.BLUE],
-	3: [Roygb.YELLOW, Roygb.GREEN, Roygb.BLUE],
-	4: [Roygb.ORANGE, Roygb.YELLOW, Roygb.GREEN, Roygb.BLUE],
-	5: [Roygb.RED, Roygb.ORANGE, Roygb.YELLOW, Roygb.GREEN, Roygb.BLUE],
-}
-
-var _tex_blue: Texture2D = load("res://art/kenney_brick-pack/PNG/Default/Blue/brick_high_2.png")
-var _tex_green: Texture2D = load("res://art/kenney_brick-pack/PNG/Default/Green/brick_high_2.png")
-var _tex_yellow: Texture2D = load("res://art/kenney_brick-pack/PNG/Default/Yellow/brick_high_2.png")
-var _tex_red: Texture2D = load("res://art/kenney_brick-pack/PNG/Default/Red/brick_high_2.png")
+# Column-based level layouts. Each column has a starting tier (1–5).
+# Bricks cascade down: red→orange→yellow→green→blue→gone.
+const LEVEL_LAYOUTS: Array[Dictionary] = [
+	{}, # placeholder for 0-index
+	{"cols": [1, 1, 1, 1, 1, 1]}, # L1: 6 blue = 60
+	{"cols": [2, 1, 1, 1, 1, 2]}, # L2: 2×40 + 4×10 = 120
+	{"cols": [2, 2, 1, 1, 2, 2]}, # L3: 4×40 + 2×10 = 180
+	{"cols": [3, 1, 2, 2, 1, 3]}, # L4: 2×90 + 2×40 + 2×10 = 280
+	{"cols": [3, 2, 1, 1, 2, 3]}, # L5: 2×90 + 2×40 + 2×10 = 280
+	{"cols": [3, 3, 2, 2, 3, 3]}, # L6: 4×90 + 2×40 = 440
+	{"cols": [4, 1, 3, 3, 1, 4]}, # L7: 2×130 + 2×90 + 2×10 = 460
+	{"cols": [4, 3, 2, 2, 3, 4]}, # L8: 2×130 + 2×90 + 2×40 = 520
+	{"cols": [4, 4, 3, 3, 4, 4]}, # L9: 4×130 + 2×90 = 700
+	{"cols": [5, 4, 3, 3, 4, 5]}, # L10: 2×170 + 2×90 + 2×130 = 790
+]
 
 var _live_count := 0
 
 func build_level(level: int) -> void:
 	_clear()
 	var layout_level := clampi(level, 1, MAX_LEVEL)
-	var layout: Array = LEVEL_LAYOUTS[layout_level]
-	var rows := layout.size()
+	var layout: Dictionary = LEVEL_LAYOUTS[layout_level]
 	var screen := get_viewport_rect().size
 	var total_w := COLS * BRICK_W + (COLS - 1) * SPACING
 	var start_x := (screen.x - total_w) * 0.5 + BRICK_W * 0.5
 	_live_count = 0
-	for r in rows:
-		var color: Roygb = layout[r]
-		var tier := _tier_for_color(color)
-		var stage_data := _stages_for_tier(tier)
-		for c in COLS:
-			var brick := BRICK.instantiate()
-			add_child(brick)
-			brick.position = Vector2(
-				start_x + c * (BRICK_W + SPACING),
-				TOP_MARGIN + r * (BRICK_H + SPACING)
-			)
-			brick.setup(tier, stage_data)
-			brick.destroyed.connect(_on_brick_destroyed)
-			_live_count += 1
+	for c in COLS:
+		var tier: int = layout.cols[c]
+		for t in range(tier, 0, -1):
+			_spawn_brick(tier, start_x + c * (BRICK_W + SPACING), TOP_MARGIN + (tier - t) * (BRICK_H + SPACING))
 
-func _tier_for_color(color: Roygb) -> int:
-	match color:
-		Roygb.GREEN:
-			return 2
-		Roygb.YELLOW:
-			return 3
-		Roygb.ORANGE:
-			return 4
-		Roygb.RED:
-			return 5
-		_:
-			return 1
-
-func _stages_for_tier(tier: int) -> Array:
-	var colors: Array = TIER_PROGRESSION.get(tier, TIER_PROGRESSION[1])
-	var stages: Array = []
-	for color in colors:
-		stages.append(_stage_for_color(color))
-	return stages
-
-func _stage_for_color(color: Roygb) -> Dictionary:
-	match color:
-		Roygb.GREEN:
-			return {"texture": _tex_green, "modulate": Color.WHITE}
-		Roygb.YELLOW:
-			return {"texture": _tex_yellow, "modulate": Color.WHITE}
-		Roygb.ORANGE:
-			return {"texture": _tex_yellow, "modulate": ORANGE_MODULATE}
-		Roygb.RED:
-			return {"texture": _tex_red, "modulate": Color.WHITE}
-		_:
-			return {"texture": _tex_blue, "modulate": Color.WHITE}
+func _spawn_brick(tier: int, x: float, y: float) -> void:
+	var brick := BRICK.instantiate()
+	add_child(brick)
+	brick.position = Vector2(x, y)
+	brick.setup(tier)
+	brick.destroyed.connect(_on_brick_destroyed)
+	brick.broken.connect(_on_brick_broken)
+	_live_count += 1
 
 func _on_brick_destroyed(points: int, pos: Vector2, tier: int) -> void:
 	_live_count -= 1
-	brick_destroyed.emit(points, pos, tier)
+	destroyed.emit(points, pos, tier)
 	if _live_count <= 0:
 		cleared.emit()
+
+func _on_brick_broken(pos: Vector2, tier: int) -> void:
+	# Cascade: spawn a smaller brick below the destroyed one.
+	if tier > 1:
+		_live_count += 1
+		_spawn_brick(tier - 1, pos.x, pos.y + BRICK_H + SPACING)
 
 func _clear() -> void:
 	for child in get_children():
