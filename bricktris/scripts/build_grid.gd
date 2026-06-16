@@ -41,6 +41,8 @@ static func placement(type: String, hit: Vector3, rot_y: float) -> Dictionary:
 	var steps := GridSnapper.rot_steps_from_y(rot_y)
 	var studs := GridSnapper.rotated_studs(GridSnapper.studs_for(type), steps)
 	var xz := GridSnapper.snap_xz(hit, studs)
+	if not GridSnapper.footprint_fits_desk(xz, studs):
+		return {}
 	var y := bottom_y(type, xz, steps)
 	return {
 		"position": Vector3(xz.x, y, xz.y),

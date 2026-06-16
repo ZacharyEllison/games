@@ -125,6 +125,11 @@ func _select_type(type: String) -> void:
 func get_selected_type() -> String:
 	return _selected_type
 
+func is_pointer_over_ui(screen_pos: Vector2) -> bool:
+	if not desktop_palette.visible:
+		return false
+	return desktop_palette.get_global_rect().has_point(screen_pos)
+
 func _show_desktop_ui() -> void:
 	desktop_palette.show()
 	hint_label.show()

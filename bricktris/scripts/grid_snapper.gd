@@ -72,6 +72,14 @@ static func footprint_indices(center_xz: Vector2, studs: Vector2i) -> Array[Vect
 			cells.append(Vector2i(min_ix + ix, min_iz + iz))
 	return cells
 
+static func footprint_fits_desk(center_xz: Vector2, studs: Vector2i) -> bool:
+	for cell in footprint_indices(center_xz, studs):
+		if cell.x < 0 or cell.y < 0:
+			return false
+		if cell.x >= BuildLayout.DESK_STUDS or cell.y >= BuildLayout.DESK_STUDS:
+			return false
+	return true
+
 static func snap_rotation(rot_y: float) -> float:
 	return float(rot_steps_from_y(rot_y)) * (PI * 0.5)
 

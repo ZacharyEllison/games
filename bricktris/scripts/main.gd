@@ -264,8 +264,11 @@ func _vr_release_brick() -> void:
 	var hit := _raycast_surface(right_hand.global_position, -right_hand.global_transform.basis.y)
 	if hit == Vector3.INF:
 		hit = right_hand.global_position
-	_finalize_placement(held_brick as Brick, _grabbed_type, held_brick.rotation.y,
-		BuildGrid.placement(_grabbed_type, hit, held_brick.rotation.y))
+	var p: Dictionary = BuildGrid.placement(_grabbed_type, hit, held_brick.rotation.y)
+	if p.is_empty():
+		held_brick = null
+		return
+	_finalize_placement(held_brick as Brick, _grabbed_type, held_brick.rotation.y, p)
 	held_brick = null
 
 func _release_velocity() -> Vector3:
@@ -420,8 +423,20 @@ func _pointer_hit() -> Vector3:
 	return _raycast_surface(origin, dir)
 
 func _update_desktop_ghost() -> void:
+	var mouse := get_viewport().get_mouse_position()
+	if hud.is_pointer_over_ui(mouse):
+		if _desktop_ghost:
+			_desktop_ghost.visible = false
+		return
+
 	var hit := _pointer_hit()
 	if hit == Vector3.INF:
+		if _desktop_ghost:
+			_desktop_ghost.visible = false
+		return
+
+	var p: Dictionary = BuildGrid.placement(_desktop_type, hit, deg_to_rad(_desktop_ghost_rot))
+	if p.is_empty():
 		if _desktop_ghost:
 			_desktop_ghost.visible = false
 		return
@@ -434,7 +449,6 @@ func _update_desktop_ghost() -> void:
 		bricks_container.add_child(_desktop_ghost)
 		(_desktop_ghost as Brick).set_ghost(true)
 
-	var p: Dictionary = BuildGrid.placement(_desktop_type, hit, deg_to_rad(_desktop_ghost_rot))
 	_desktop_ghost.visible = true
 	_desktop_ghost.global_position = p["position"]
 	_desktop_ghost.rotation.y = p["rot_y"]
@@ -445,6 +459,17 @@ func _kill_desktop_ghost() -> void:
 		_desktop_ghost = null
 
 func _input(event: InputEvent) -> void:
+	if _in_vr:
+		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_R:
+			_desktop_ghost_rot = fmod(_desktop_ghost_rot + 90.0, 360.0)
+			if _desktop_ghost:
+				_desktop_ghost.rotation.y = deg_to_rad(_desktop_ghost_rot)
+		elif event.keycode == KEY_Z and (event.ctrl_pressed or event.meta_pressed):
+			_desktop_undo()
+
+func _unhandled_input(event: InputEvent) -> void:
 	if _in_vr:
 		return
 	if event is InputEventMouseButton:
@@ -458,17 +483,15 @@ func _input(event: InputEvent) -> void:
 					_zoom_desktop_camera(-BuildLayout.STUD_PITCH * 0.75)
 				MOUSE_BUTTON_WHEEL_DOWN:
 					_zoom_desktop_camera(BuildLayout.STUD_PITCH * 0.75)
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_R:
-			_desktop_ghost_rot = fmod(_desktop_ghost_rot + 90.0, 360.0)
-			if _desktop_ghost:
-				_desktop_ghost.rotation.y = deg_to_rad(_desktop_ghost_rot)
-		elif event.keycode == KEY_Z and (event.ctrl_pressed or event.meta_pressed):
-			_desktop_undo()
 
 func _desktop_place() -> void:
+	if hud.is_pointer_over_ui(get_viewport().get_mouse_position()):
+		return
 	var hit := _pointer_hit()
 	if hit == Vector3.INF:
+		return
+	var p: Dictionary = BuildGrid.placement(_desktop_type, hit, deg_to_rad(_desktop_ghost_rot))
+	if p.is_empty():
 		return
 	var scene := BrickPalette.BRICK_SCENES.get(_desktop_type) as PackedScene
 	if not scene:
@@ -476,11 +499,14 @@ func _desktop_place() -> void:
 	var brick: Brick = scene.instantiate()
 	bricks_container.add_child(brick)
 	brick.set_ghost(true)
-	var p: Dictionary = BuildGrid.placement(_desktop_type, hit, deg_to_rad(_desktop_ghost_rot))
 	_finalize_placement(brick, _desktop_type, p["rot_y"], p)
 
 func _finalize_placement(brick: Brick, type: String, rot_y: float, preset: Dictionary = {}) -> void:
 	var p: Dictionary = preset if not preset.is_empty() else BuildGrid.placement(type, brick.global_position, rot_y)
+	if p.is_empty():
+		if is_instance_valid(brick):
+			brick.queue_free()
+		return
 	brick.global_position = p["position"]
 	brick.rotation = Vector3(0, p["rot_y"], 0)
 	brick.set_placed(type, p["rot_steps"])
