@@ -14,24 +14,23 @@ const BRICK_SCENES := {
 	"brick_slope_1x2": preload("res://scenes/brick_slope_1x2.tscn"),
 }
 
-# 2 rows x 5 cols — row 0 = bricks, row 1 = plates/specials
 const LAYOUT: Array = [
 	["brick_1x1", "brick_1x2", "brick_2x2", "brick_1x4", "brick_2x4"],
 	["plate_1x1", "plate_1x2", "plate_2x2", "brick_corner", "brick_slope_1x2"],
 ]
 
-const SLOT_SPACING := 0.18  # metres between palette slots
-const GRAB_RADIUS := 0.12   # hand must be within this distance to grab
+const SLOT_SPACING := 0.10  # 10cm between palette slots
+const GRAB_RADIUS := 0.08   # 8cm reach to grab
 
-var _slots: Array = []  # Array of {type, area, brick}
+var _slots: Array = []
 var _highlighted_type := ""
 
 func _ready() -> void:
 	_build_palette()
 
 func _build_palette() -> void:
-	var cols := LAYOUT[0].size()
-	var rows := LAYOUT.size()
+	var cols: int = LAYOUT[0].size()
+	var rows: int = LAYOUT.size()
 	for row in rows:
 		for col in cols:
 			var type: String = LAYOUT[row][col]
@@ -47,48 +46,35 @@ func _add_slot(type: String, offset: Vector3) -> void:
 	container.position = offset
 	add_child(container)
 
-	# Display brick — frozen, no physics
 	var brick: Brick = (BRICK_SCENES[type] as PackedScene).instantiate()
 	brick.freeze = true
 	brick.collision_layer = 0
 	brick.collision_mask = 0
-	# Scale down so bricks fit nicely in the palette (1x1 bricks are ~1m in-engine)
-	brick.scale = Vector3.ONE * 0.12
+	# Palette display scale — same as play scale so what you see is what you get
+	brick.scale = Vector3.ONE * GridSnapper.BRICK_SCALE
 	container.add_child(brick)
 
-	# Grab detection area
-	var area := Area3D.new()
-	var cshape := CollisionShape3D.new()
-	var sphere := SphereShape3D.new()
-	sphere.radius = GRAB_RADIUS
-	cshape.shape = sphere
-	area.add_child(cshape)
-	container.add_child(area)
+	_slots.append({ "type": type, "brick": brick, "container": container })
 
-	_slots.append({ "type": type, "area": area, "brick": brick, "container": container })
-
-# Returns the type string of the nearest palette slot within GRAB_RADIUS, or ""
 func get_nearest_type(hand_world_pos: Vector3) -> String:
 	var best_dist := INF
 	var best_type := ""
 	for slot in _slots:
-		var d: float = (slot["area"] as Area3D).global_position.distance_to(hand_world_pos)
+		var slot_pos: Vector3 = (slot["container"] as Node3D).global_position
+		var d: float = slot_pos.distance_to(hand_world_pos)
 		if d < GRAB_RADIUS and d < best_dist:
 			best_dist = d
 			best_type = slot["type"]
 	return best_type
 
-# Highlight the slot nearest to the hand (called every frame while no brick held)
 func update_highlight(hand_world_pos: Vector3) -> void:
 	var nearest := get_nearest_type(hand_world_pos)
 	if nearest == _highlighted_type:
 		return
-	# Restore old highlight
 	for slot in _slots:
 		if slot["type"] == _highlighted_type:
 			(slot["brick"] as Brick).set_ghost(false)
-	# Apply new highlight
 	_highlighted_type = nearest
 	for slot in _slots:
 		if slot["type"] == nearest:
-			(slot["brick"] as Brick).set_ghost(true)  # blue tint = hover highlight
+			(slot["brick"] as Brick).set_ghost(true)

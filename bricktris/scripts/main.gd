@@ -22,7 +22,7 @@ func _ready() -> void:
 func _init_webxr() -> void:
 	webxr_interface = XRServer.find_interface("WebXR") as WebXRInterface
 	if not webxr_interface:
-		print("WebXR not available — desktop mode")
+		print("WebXR not available - desktop mode")
 		hud.set_vr_status("desktop")
 		return
 	webxr_interface.session_supported.connect(_webxr_session_supported)
@@ -72,7 +72,7 @@ func _on_squeeze_start(input_source_id: int) -> void:
 
 func _on_squeeze_end(input_source_id: int) -> void:
 	if input_source_id == 1:
-		_place_brick()
+		_release_brick()
 
 func _on_right_button_pressed(button: String) -> void:
 	if button == "grip_click":
@@ -80,7 +80,7 @@ func _on_right_button_pressed(button: String) -> void:
 
 func _on_right_button_released(button: String) -> void:
 	if button == "grip_click":
-		_place_brick()
+		_release_brick()
 
 func _try_grab() -> void:
 	if held_brick:
@@ -89,22 +89,19 @@ func _try_grab() -> void:
 	if type.is_empty():
 		return
 	_grabbed_type = type
-	_begin_hold(type)
-
-func _begin_hold(type: String) -> void:
 	var scene: PackedScene = BrickPalette.BRICK_SCENES.get(type)
 	if not scene:
 		return
 	held_brick = scene.instantiate()
+	held_brick.scale = Vector3.ONE * GridSnapper.BRICK_SCALE
 	bricks_container.add_child(held_brick)
 	(held_brick as Brick).set_ghost(true)
 
 func _process(_delta: float) -> void:
 	if held_brick:
-		var hand_pos := right_hand.global_position
-		var dims: Vector3 = GridSnapper.BRICK_DEFS.get(_grabbed_type, Vector3.ONE)
-		held_brick.global_position = GridSnapper.snap(hand_pos, dims)
-		held_brick.global_basis = right_hand.global_basis
+		# Follow hand position and rotation freely while held
+		held_brick.global_position = right_hand.global_position
+		held_brick.global_rotation = right_hand.global_rotation
 
 		# Y-rotate on thumbstick flick
 		var axes := right_hand.get_vector2("primary")
@@ -114,7 +111,6 @@ func _process(_delta: float) -> void:
 		elif abs(axes.x) < 0.3:
 			_rotated_this_flick = false
 	else:
-		# Highlight nearest palette brick
 		brick_palette.update_highlight(right_hand.global_position)
 
 	# Desktop orbit camera
@@ -125,9 +121,15 @@ func _process(_delta: float) -> void:
 			cam_pivot.rotation.y -= vel.x
 			cam_pivot.rotation.x = clamp(cam_pivot.rotation.x - vel.y, -1.2, 0.1)
 
-func _place_brick() -> void:
+func _release_brick() -> void:
 	if not held_brick:
 		return
+	# Snap to grid on release
+	var dims: Vector3 = GridSnapper.BRICK_DEFS.get(_grabbed_type, Vector3.ONE)
+	held_brick.global_position = GridSnapper.snap(held_brick.global_position, dims)
+	# Keep only Y rotation (snap to 90-degree increments)
+	var y_rot: float = round(held_brick.rotation.y / (PI / 2.0)) * (PI / 2.0)
+	held_brick.rotation = Vector3(0, y_rot, 0)
 	(held_brick as Brick).set_ghost(false)
 	AudioManager.play_place()
 	held_brick = null
@@ -141,7 +143,7 @@ func _input(event: InputEvent) -> void:
 		if not held_brick:
 			_begin_hold_desktop()
 		else:
-			_place_brick()
+			_release_brick()
 
 func _begin_hold_desktop() -> void:
 	var cam := $XROrigin3D/XRCamera3D as Camera3D
@@ -151,13 +153,12 @@ func _begin_hold_desktop() -> void:
 		return
 	var t := -origin.y / ray.y
 	var hit := origin + ray * t
-	# Default to brick_1x1 for desktop click
 	_grabbed_type = "brick_1x1"
 	held_brick = (BrickPalette.BRICK_SCENES["brick_1x1"] as PackedScene).instantiate()
+	held_brick.scale = Vector3.ONE * GridSnapper.BRICK_SCALE
 	bricks_container.add_child(held_brick)
 	(held_brick as Brick).set_ghost(true)
-	var dims := GridSnapper.BRICK_DEFS["brick_1x1"]
-	held_brick.global_position = GridSnapper.snap(hit, dims)
+	held_brick.global_position = hit
 
 # ── Reset ────────────────────────────────────────────────────────────────────
 
