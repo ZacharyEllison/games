@@ -38,10 +38,10 @@
   {
     "id": "bricktris",
     "title": "Bricktris",
-    "description": "WebXR brick building sandbox with Tetris-style stacking and hand-tracking support.",
-    "url": "./bricktris/dist/index.html",
-    "icon": "./bricktris/screenshot.png",
+    "description": "Free-build brick construction toy. Play in any browser; open in Quest Browser for full WebXR hand-held controller support.",
+    "url": "./bricktris/index.html",
+    "icon": "./bricktris/icon.svg",
     "status": "Prototype",
-    "accent": "#b48766"
+    "accent": "#81a1c1"
   }
 ]
