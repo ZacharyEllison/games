@@ -33,25 +33,23 @@ const TYPE_LABELS := {
 	"brick_slope_1x2": "Slope",
 }
 
-@onready var enter_vr_btn: Button = %EnterVRBtn
-@onready var vr_status_label: Label = %VRStatusLabel
-@onready var reset_btn: Button = %ResetBtn
+@onready var desktop_enter_vr_btn: Button = %DesktopEnterVRBtn
+@onready var desktop_vr_status_label: Label = %DesktopVRStatusLabel
 @onready var desktop_reset_btn: Button = %DesktopResetBtn
-@onready var top_panel: PanelContainer = %TopPanel
 @onready var desktop_palette: PanelContainer = %DesktopPalette
 @onready var palette_list: VBoxContainer = %PaletteList
 @onready var hint_label: Label = %HintLabel
 
 var _type_buttons: Dictionary = {}
 var _selected_type := "brick_1x1"
+var _xr_available := false
 
 func _ready() -> void:
-	reset_btn.pressed.connect(func(): reset_requested.emit())
 	desktop_reset_btn.pressed.connect(func(): reset_requested.emit())
-	enter_vr_btn.pressed.connect(func(): enter_vr_requested.emit())
-	enter_vr_btn.disabled = true
-	vr_status_label.text = "Checking VR support..."
-	desktop_palette.hide()
+	desktop_enter_vr_btn.pressed.connect(func(): enter_vr_requested.emit())
+	desktop_enter_vr_btn.disabled = true
+	desktop_vr_status_label.text = "Checking XR support..."
+	_show_desktop_ui()
 	_build_palette_ui()
 
 func _build_palette_ui() -> void:
@@ -94,34 +92,40 @@ func _select_type(type: String) -> void:
 func get_selected_type() -> String:
 	return _selected_type
 
+func _show_desktop_ui() -> void:
+	desktop_palette.show()
+	hint_label.show()
+
 func set_vr_status(status: String) -> void:
 	match status:
 		"supported":
-			enter_vr_btn.disabled = false
-			vr_status_label.text = "XR ready (passthrough)"
+			_xr_available = true
+			desktop_enter_vr_btn.disabled = false
+			desktop_enter_vr_btn.show()
+			desktop_vr_status_label.text = "XR ready (passthrough)"
+			desktop_vr_status_label.show()
 		"unsupported":
-			enter_vr_btn.disabled = true
-			vr_status_label.text = "VR not supported in this browser"
+			_xr_available = false
+			desktop_enter_vr_btn.hide()
+			desktop_vr_status_label.text = "VR not supported in this browser"
+			desktop_vr_status_label.show()
 		"desktop":
-			enter_vr_btn.hide()
-			vr_status_label.hide()
-			top_panel.hide()
-			desktop_palette.show()
-			hint_label.show()
+			_xr_available = false
+			desktop_enter_vr_btn.hide()
+			desktop_vr_status_label.hide()
+	_show_desktop_ui()
 
 func on_xr_started() -> void:
-	enter_vr_btn.hide()
-	vr_status_label.hide()
-	top_panel.hide()
 	desktop_palette.hide()
 	hint_label.hide()
 
 func on_xr_ended() -> void:
-	if enter_vr_btn.visible:
-		top_panel.show()
-		enter_vr_btn.show()
-		enter_vr_btn.disabled = false
-		vr_status_label.text = "XR ready (passthrough)"
-		vr_status_label.show()
+	if _xr_available:
+		desktop_enter_vr_btn.disabled = false
+		desktop_enter_vr_btn.show()
+		desktop_vr_status_label.text = "XR ready (passthrough)"
+		desktop_vr_status_label.show()
 	else:
-		set_vr_status("desktop")
+		desktop_enter_vr_btn.hide()
+		desktop_vr_status_label.hide()
+	_show_desktop_ui()

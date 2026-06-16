@@ -19,6 +19,11 @@ var _desktop_ghost_rot := 0.0
 var _placed_bricks: Array = []
 
 const RAY_MASK := 3  # desk (1) + placed bricks (2)
+const GRAB_RADIUS := 0.14
+const TOSS_SPEED := 1.1
+
+var _hand_prev_pos := Vector3.ZERO
+var _hand_velocity := Vector3.ZERO
 
 @onready var right_hand: XRController3D = $XROrigin3D/RightHand
 @onready var cam: XRCamera3D = $XROrigin3D/XRCamera3D
@@ -32,7 +37,7 @@ const RAY_MASK := 3  # desk (1) + placed bricks (2)
 
 func _ready() -> void:
 	GridSnapper.configure_from_desk(desk)
-	sun.shadow_enabled = false
+	_disable_scene_shadows(self)
 	var env := world_env.environment
 	_saved_bg_mode = env.background_mode
 	_saved_bg_color = env.background_color
@@ -88,6 +93,8 @@ func _on_enter_vr() -> void:
 
 func _webxr_session_started() -> void:
 	_in_vr = true
+	_hand_prev_pos = Vector3.ZERO
+	_hand_velocity = Vector3.ZERO
 	_use_passthrough = webxr_interface.session_mode == "immersive-ar"
 	_set_passthrough(_use_passthrough)
 	brick_palette.show()
@@ -117,11 +124,21 @@ func _place_palette_in_front() -> void:
 		forward_xz = Vector3(0, 0, -1)
 	forward_xz = forward_xz.normalized()
 	var eye := cam.global_position
-	brick_palette.global_position = eye + forward_xz * 0.55 + Vector3(0, -0.35, 0)
+	brick_palette.global_position = eye + forward_xz * 0.65 + Vector3(0, -0.25, 0)
 	var look_target := eye
 	look_target.y = brick_palette.global_position.y
 	if look_target.distance_squared_to(brick_palette.global_position) > 0.001:
 		brick_palette.look_at(look_target, Vector3.UP)
+
+func _disable_scene_shadows(node: Node) -> void:
+	if node is DirectionalLight3D:
+		var light := node as DirectionalLight3D
+		light.shadow_enabled = false
+		light.light_specular = 0.0
+	if node is GeometryInstance3D:
+		(node as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for child in node.get_children():
+		_disable_scene_shadows(child)
 
 func _webxr_session_ended() -> void:
 	_in_vr = false
@@ -155,19 +172,51 @@ func _on_right_button_released(button: String) -> void:
 func _try_grab() -> void:
 	if held_brick:
 		return
-	var type := brick_palette.get_nearest_type(right_hand.global_position)
-	if type.is_empty():
-		return
+	var hand_pos := right_hand.global_position
+	var palette_hit: Dictionary = brick_palette.query_nearest(hand_pos)
+	var placed: Brick = _nearest_placed_brick(hand_pos)
+	var palette_dist: float = palette_hit["distance"]
+	var placed_dist: float = placed.global_position.distance_to(hand_pos) if placed else INF
+
+	if placed and placed_dist <= palette_dist and placed_dist < GRAB_RADIUS:
+		_grab_placed_brick(placed)
+	elif not palette_hit["type"].is_empty():
+		_spawn_from_palette(palette_hit["type"])
+
+func _spawn_from_palette(type: String) -> void:
 	_grabbed_type = type
 	var scene: PackedScene = BrickPalette.BRICK_SCENES.get(type)
 	if not scene:
 		return
 	held_brick = scene.instantiate()
 	bricks_container.add_child(held_brick)
-	(held_brick as Brick).set_ghost(true)
+	(held_brick as Brick).set_held(true)
+
+func _grab_placed_brick(brick: Brick) -> void:
+	_grabbed_type = brick.brick_type
+	held_brick = brick
+	_placed_bricks.erase(brick)
+	_rebuild_grid()
+	(brick as Brick).set_held(true)
+
+func _nearest_placed_brick(hand_pos: Vector3) -> Brick:
+	var best: Brick = null
+	var best_dist := GRAB_RADIUS
+	for node in _placed_bricks:
+		if not is_instance_valid(node) or not node is Brick:
+			continue
+		var brick := node as Brick
+		var d: float = brick.global_position.distance_to(hand_pos)
+		if d < best_dist:
+			best_dist = d
+			best = brick
+	return best
 
 func _vr_release_brick() -> void:
 	if not held_brick:
+		return
+	if _hand_velocity.length() >= TOSS_SPEED:
+		_despawn_held()
 		return
 	var hit := _raycast_surface(right_hand.global_position, -right_hand.global_transform.basis.y)
 	if hit == Vector3.INF:
@@ -176,6 +225,12 @@ func _vr_release_brick() -> void:
 		BuildGrid.placement(_grabbed_type, hit, held_brick.rotation.y))
 	held_brick = null
 
+func _despawn_held() -> void:
+	if held_brick:
+		held_brick.queue_free()
+	held_brick = null
+	AudioManager.play_chime()
+
 func _process(_delta: float) -> void:
 	if _in_vr:
 		_process_vr()
@@ -183,8 +238,13 @@ func _process(_delta: float) -> void:
 		_process_desktop()
 
 func _process_vr() -> void:
+	var hand_pos := right_hand.global_position
+	if _hand_prev_pos != Vector3.ZERO:
+		_hand_velocity = (hand_pos - _hand_prev_pos) / maxf(get_process_delta_time(), 0.001)
+	_hand_prev_pos = hand_pos
+
 	if held_brick:
-		held_brick.global_position = right_hand.global_position
+		held_brick.global_position = hand_pos
 		held_brick.global_rotation = right_hand.global_rotation
 		var axes := right_hand.get_vector2("primary")
 		if axes.x > 0.7 and not _rotated_this_flick:
@@ -193,7 +253,7 @@ func _process_vr() -> void:
 		elif abs(axes.x) < 0.3:
 			_rotated_this_flick = false
 	else:
-		brick_palette.update_highlight(right_hand.global_position)
+		brick_palette.update_highlight(hand_pos)
 
 func _process_desktop() -> void:
 	_update_desktop_ghost()

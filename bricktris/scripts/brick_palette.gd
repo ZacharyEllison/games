@@ -14,13 +14,15 @@ const BRICK_SCENES := {
 	"brick_slope_1x2": preload("res://scenes/brick_slope_1x2.tscn"),
 }
 
+# Two rows, spaced for the widest bricks (2x4 ~= 0.32 m).
 const LAYOUT: Array = [
 	["brick_1x1", "brick_1x2", "brick_2x2", "brick_1x4", "brick_2x4"],
 	["plate_1x1", "plate_1x2", "plate_2x2", "brick_corner", "brick_slope_1x2"],
 ]
 
-const SLOT_SPACING := 0.18  # 18cm between palette slots
-const GRAB_RADIUS := 0.12   # 12cm reach to grab
+const COL_SPACING := 0.52
+const ROW_SPACING := 0.42
+const GRAB_RADIUS := 0.18
 
 var _slots: Array = []
 var _highlighted_type := ""
@@ -35,8 +37,8 @@ func _build_palette() -> void:
 		for col in cols:
 			var type: String = LAYOUT[row][col]
 			var offset := Vector3(
-				(col - (cols - 1) * 0.5) * SLOT_SPACING,
-				-row * SLOT_SPACING,
+				(col - (cols - 1) * 0.5) * COL_SPACING,
+				-row * ROW_SPACING,
 				0.0
 			)
 			_add_slot(type, offset)
@@ -54,7 +56,7 @@ func _add_slot(type: String, offset: Vector3) -> void:
 
 	_slots.append({ "type": type, "brick": brick, "container": container })
 
-func get_nearest_type(hand_world_pos: Vector3) -> String:
+func query_nearest(hand_world_pos: Vector3) -> Dictionary:
 	var best_dist := INF
 	var best_type := ""
 	for slot in _slots:
@@ -63,7 +65,12 @@ func get_nearest_type(hand_world_pos: Vector3) -> String:
 		if d < GRAB_RADIUS and d < best_dist:
 			best_dist = d
 			best_type = slot["type"]
-	return best_type
+	if best_type.is_empty():
+		return { "type": "", "distance": INF }
+	return { "type": best_type, "distance": best_dist }
+
+func get_nearest_type(hand_world_pos: Vector3) -> String:
+	return query_nearest(hand_world_pos)["type"]
 
 func update_highlight(hand_world_pos: Vector3) -> void:
 	var nearest := get_nearest_type(hand_world_pos)

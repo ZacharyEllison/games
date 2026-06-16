@@ -19,6 +19,7 @@ const BRICK_STUDS := {
 	"brick_slope_1x2": Vector2i(2, 1),
 }
 
+# Full mesh height (bottom peg plane → stud tip).
 const BRICK_HEIGHTS := {
 	"brick_1x1":       0.114,
 	"brick_1x2":       0.114,
@@ -32,17 +33,18 @@ const BRICK_HEIGHTS := {
 	"brick_slope_1x2": 0.114,
 }
 
+# Top of brick body (anti-stud seat); studs protrude above this by ~0.018 m.
 const SEAT_OFFSETS := {
-	"brick_1x1":       0.109,
-	"brick_1x2":       0.109,
-	"brick_2x2":       0.109,
-	"brick_1x4":       0.109,
-	"brick_2x4":       0.109,
-	"plate_1x1":       0.05,
-	"plate_1x2":       0.05,
-	"plate_2x2":       0.05,
-	"brick_corner":    0.109,
-	"brick_slope_1x2": 0.109,
+	"brick_1x1":       0.096,
+	"brick_1x2":       0.096,
+	"brick_2x2":       0.096,
+	"brick_1x4":       0.096,
+	"brick_2x4":       0.096,
+	"plate_1x1":       0.032,
+	"plate_1x2":       0.032,
+	"plate_2x2":       0.032,
+	"brick_corner":    0.096,
+	"brick_slope_1x2": 0.096,
 }
 
 # Set from the desk node in main.gd so Y always matches the rendered surface.
@@ -56,7 +58,7 @@ static func height_for(type: String) -> float:
 	return BRICK_HEIGHTS.get(type, 0.114)
 
 static func seat_offset(type: String) -> float:
-	return SEAT_OFFSETS.get(type, 0.109)
+	return SEAT_OFFSETS.get(type, 0.096)
 
 static func seat_surface_y(type: String, bottom_y: float) -> float:
 	return bottom_y + seat_offset(type)

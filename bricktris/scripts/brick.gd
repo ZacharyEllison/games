@@ -18,19 +18,25 @@ func set_ghost(is_ghost: bool) -> void:
 		freeze = true
 		collision_layer = 0
 		collision_mask = 0
+		_apply_ghost_to_node(self, true)
 	else:
-		# Placed bricks stay frozen — LEGO stacking, no physics shoving.
 		freeze = true
 		collision_layer = 2
 		collision_mask = 1
-	_apply_ghost_to_node(self, is_ghost)
+		_disable_shadows_on_node(self)
+
+func set_held(is_held: bool) -> void:
+	set_ghost(is_held)
 
 func set_placed(type: String, steps: int) -> void:
 	brick_type = type
 	rot_steps = steps
 
 func set_highlighted(on: bool) -> void:
-	_apply_mat_to_node(self, _ghost_mat if on else null)
+	if on:
+		_apply_mat_to_node(self, _ghost_mat)
+	else:
+		_disable_shadows_on_node(self)
 
 func _apply_ghost_to_node(node: Node, is_ghost: bool) -> void:
 	_apply_mat_to_node(node, _ghost_mat if is_ghost else null)
@@ -44,9 +50,22 @@ func _apply_mat_to_node(node: Node, mat) -> void:
 		_apply_mat_to_node(child, mat)
 
 func _disable_shadows_on_node(node: Node) -> void:
+	if node is GeometryInstance3D:
+		var gi := node as GeometryInstance3D
+		gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if node is MeshInstance3D:
+		var mi := node as MeshInstance3D
+		if mi.mesh:
+			for i in mi.mesh.get_surface_count():
+				var src: Material = mi.mesh.surface_get_material(i)
+				if src == null:
+					src = mi.get_active_material(i)
+				if src is StandardMaterial3D:
+					var m := (src as StandardMaterial3D).duplicate()
+					m.disable_receive_shadows = true
+					m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+					mi.set_surface_override_material(i, m)
 	for child in node.get_children():
-		if child is GeometryInstance3D:
-			(child as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_disable_shadows_on_node(child)
 
 func get_placement_record() -> Dictionary:
