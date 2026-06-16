@@ -39,6 +39,8 @@ var _cam_ortho_size := DesktopCamera.ORTHO_SIZE
 var _cam_preset := DesktopCamera.Preset.ORBIT
 var _cam_orbit_drag := false
 
+var _placement_preview: PlacementPreview
+
 @onready var right_hand: XRController3D = $XROrigin3D/RightHand
 @onready var right_hand_mesh: MeshInstance3D = $XROrigin3D/RightHand/RightHandMesh
 @onready var cam: XRCamera3D = $XROrigin3D/XRCamera3D
@@ -63,6 +65,8 @@ func _ready() -> void:
 	hud.view_preset_selected.connect(_on_desktop_view_preset)
 	_set_hand_mesh_visible(false)
 	brick_palette.show()
+	_placement_preview = PlacementPreview.new()
+	add_child(_placement_preview)
 	_init_desktop_camera()
 	_init_webxr()
 
@@ -254,9 +258,15 @@ func _vr_release_brick() -> void:
 	var p: Dictionary = BuildGrid.placement(_grabbed_type, hit, rot_y)
 	if p.is_empty():
 		held_brick = null
+		_clear_placement_preview()
 		return
 	_finalize_placement(held_brick as Brick, _grabbed_type, rot_y, p)
 	held_brick = null
+	_clear_placement_preview()
+
+func _clear_placement_preview() -> void:
+	if _placement_preview:
+		_placement_preview.clear()
 
 func _held_rot_y() -> float:
 	return float(_held_rot_steps) * (PI * 0.5)
@@ -275,6 +285,7 @@ func _release_angular_velocity() -> Vector3:
 func _throw_held(lin_vel: Vector3, ang_vel: Vector3) -> void:
 	var brick := held_brick as Brick
 	held_brick = null
+	_clear_placement_preview()
 	brick.begin_throw(lin_vel, ang_vel)
 	_thrown_bricks.append(brick)
 
@@ -357,8 +368,12 @@ func _process_desktop(delta: float) -> void:
 		if held_brick:
 			held_brick.global_position = hand_pos
 			held_brick.rotation = Vector3(0, _held_rot_y(), 0)
+			_update_desktop_placement_preview()
 		elif not over_ui:
 			brick_palette.update_highlight(hand_pos)
+			_clear_placement_preview()
+	else:
+		_clear_placement_preview()
 	if _cam_orbit_drag:
 		var vel := Input.get_last_mouse_velocity() * 0.003
 		_cam_yaw -= vel.x
@@ -413,6 +428,14 @@ func _desktop_hand_pos() -> Vector3:
 			return origin + dir * t
 	return origin + dir * 0.55
 
+func _update_desktop_placement_preview() -> void:
+	if _in_vr or not held_brick or not _placement_preview:
+		return
+	var hit := _raycast_surface(right_hand.global_position, Vector3.DOWN)
+	if hit == Vector3.INF:
+		hit = right_hand.global_position
+	_placement_preview.show_placement(_grabbed_type, hit, _held_rot_y())
+
 # Raycast against desk + placed bricks so stacking targets the surface under the cursor.
 func _raycast_surface(from: Vector3, dir: Vector3) -> Vector3:
 	if dir.length_squared() < 0.0001:
@@ -437,6 +460,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_R and held_brick:
 			_held_rot_steps = (_held_rot_steps + 1) % 4
+			_update_desktop_placement_preview()
 		elif event.keycode == KEY_Z and (event.ctrl_pressed or event.meta_pressed):
 			_desktop_undo()
 
@@ -490,6 +514,7 @@ func _rebuild_grid() -> void:
 	BuildGrid.rebuild(records)
 
 func _on_reset() -> void:
+	_clear_placement_preview()
 	if held_brick:
 		held_brick.queue_free()
 		held_brick = null

@@ -49,3 +49,15 @@ static func placement(type: String, hit: Vector3, rot_y: float) -> Dictionary:
 		"rot_y": GridSnapper.snap_rotation(rot_y),
 		"rot_steps": steps,
 	}
+
+static func preview(type: String, hit: Vector3, rot_y: float) -> Dictionary:
+	var steps := GridSnapper.rot_steps_from_y(rot_y)
+	var studs := GridSnapper.rotated_studs(GridSnapper.studs_for(type), steps)
+	var xz := GridSnapper.snap_xz(hit, studs)
+	var valid := GridSnapper.footprint_fits_desk(xz, studs)
+	var y := bottom_y(type, xz, steps) if valid else GridSnapper.desk_surface_y
+	return {
+		"cells": GridSnapper.footprint_indices(xz, studs),
+		"y": y,
+		"valid": valid,
+	}

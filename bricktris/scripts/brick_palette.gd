@@ -22,6 +22,7 @@ const LAYOUT: Array = [
 
 const X_SPACING := BuildLayout.PALETTE_X_SPACING
 const Z_SPACING := BuildLayout.PALETTE_Z_SPACING
+const BRICK_SCALE := BuildLayout.PALETTE_BRICK_SCALE
 const GRAB_RADIUS := BuildLayout.PALETTE_GRAB_RADIUS
 
 var _slots: Array = []
@@ -49,6 +50,7 @@ func _add_slot(type: String, offset: Vector3) -> void:
 	add_child(container)
 
 	var brick: Brick = (BRICK_SCENES[type] as PackedScene).instantiate()
+	brick.scale = Vector3.ONE * BRICK_SCALE
 	brick.freeze = true
 	brick.collision_layer = 0
 	brick.collision_mask = 0
