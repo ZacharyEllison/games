@@ -1,0 +1,147 @@
+<style>
+  .panel-container {
+    align-items: flex-start;
+    padding: 2;
+    width: 50;
+    display: flex;
+    flex-direction: column;
+    background-color: #09090b;
+    border-color: #27272a;
+    border-width: 0.15;
+    border-radius: 3;
+  }
+  .heading {
+    font-size: 4;
+    font-weight: medium;
+    color: #fafafa;
+    text-align: left;
+  }
+  .sub-heading {
+    font-size: 2;
+    color: #a1a1aa;
+    text-align: left;
+    margin-top: 0.3;
+  }
+  .brick-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1;
+    margin-top: 1.5;
+  }
+  .brick-btn {
+    padding: 1.5;
+    background-color: #27272a;
+    color: #fafafa;
+    border-radius: 1.5;
+    border-width: 0.1;
+    border-color: #3f3f46;
+    font-size: 2;
+    cursor: pointer;
+    width: 12;
+    text-align: center;
+  }
+  .brick-btn.selected {
+    background-color: #fafafa;
+    color: #09090b;
+  }
+  .scale-controls {
+    display: flex;
+    align-items: center;
+    gap: 1;
+    margin-top: 1.5;
+  }
+  .scale-label {
+    font-size: 2;
+    color: #a1a1aa;
+    text-align: left;
+  }
+  .scale-btn {
+    padding: 1;
+    background-color: #27272a;
+    color: #fafafa;
+    border-radius: 1;
+    border-width: 0.1;
+    border-color: #3f3f46;
+    font-size: 2;
+    cursor: pointer;
+    width: 6;
+    text-align: center;
+  }
+  .mode-controls {
+    display: flex;
+    gap: 1;
+    margin-top: 1.5;
+  }
+  .mode-btn {
+    padding: 1.5;
+    flex: 1;
+    background-color: #27272a;
+    color: #fafafa;
+    border-radius: 1.5;
+    border-width: 0.1;
+    border-color: #3f3f46;
+    font-size: 2;
+    cursor: pointer;
+    text-align: center;
+  }
+  .mode-btn.active {
+    background-color: #fafafa;
+    color: #09090b;
+  }
+  .mode-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .game-info {
+    margin-top: 1;
+    display: flex;
+    justify-content: space-between;
+  }
+  .game-stat {
+    font-size: 2.5;
+    color: #60a5fa;
+    text-align: center;
+    flex: 1;
+  }
+  .reset-btn {
+    margin-top: 1.5;
+    width: 100%;
+    padding: 1.5;
+    background-color: #27272a;
+    color: #a1a1aa;
+    border-radius: 1.5;
+    border-width: 0.1;
+    border-color: #3f3f46;
+    font-size: 2;
+    cursor: pointer;
+  }
+</style>
+<div class="panel-container">
+  <span class="heading"> Bricktris </span>
+  <span class="sub-heading"> Select a brick, squeeze to place </span>
+  <div class="mode-controls">
+    <button id="mode-build" class="mode-btn active" data-mode="build">Build</button>
+    <button id="mode-tetris" class="mode-btn disabled" data-mode="tetris">Tetris</button>
+  </div>
+  <div class="brick-grid">
+    <button id="brick-1x1" class="brick-btn selected" data-type="brick1x1">1x1</button>
+    <button id="brick-1x2" class="brick-btn" data-type="brick1x2">1x2</button>
+    <button id="brick-2x2" class="brick-btn" data-type="brick2x2">2x2</button>
+    <button id="brick-1x4" class="brick-btn" data-type="brick1x4">1x4</button>
+    <button id="brick-plate" class="brick-btn" data-type="plate1x1">Plate</button>
+    <button id="brick-corner" class="brick-btn" data-type="brickCorner">Corner</button>
+  </div>
+  <div class="scale-controls">
+    <span class="scale-label">Scale:</span>
+    <button id="scale-down" class="scale-btn">-</button>
+    <span id="scale-value" class="scale-label">15</span>
+    <button id="scale-up" class="scale-btn">+</button>
+  </div>
+  <div id="game-stats" class="game-info" style="display:none;">
+    <span id="stat-score" class="game-stat">0</span>
+    <span id="stat-layers" class="game-stat">0</span>
+  </div>
+  <button id="reset-btn" class="reset-btn">Reset Scene</button>
+  <button id="xr-button" class="reset-btn">Enter XR</button>
+</div>

@@ -34,5 +34,14 @@
     "icon": "./pai-do/index.icon.png",
     "status": "Prototype",
     "accent": "#b48766"
+ },
+  {
+    "id": "bricktris",
+    "title": "Bricktris",
+    "description": "WebXR brick building sandbox with Tetris-style stacking and hand-tracking support.",
+    "url": "./bricktris/dist/index.html",
+    "icon": "./bricktris/screenshot.png",
+    "status": "Prototype",
+    "accent": "#b48766"
   }
 ]
