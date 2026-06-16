@@ -39,8 +39,7 @@ var _cam_ortho_size := DesktopCamera.ORTHO_SIZE
 var _cam_preset := DesktopCamera.Preset.ORBIT
 var _cam_orbit_drag := false
 
-var _placement_preview: PlacementPreview
-
+@onready var _placement_preview: Node3D = $PlacementPreview
 @onready var right_hand: XRController3D = $XROrigin3D/RightHand
 @onready var right_hand_mesh: MeshInstance3D = $XROrigin3D/RightHand/RightHandMesh
 @onready var cam: XRCamera3D = $XROrigin3D/XRCamera3D
@@ -65,8 +64,6 @@ func _ready() -> void:
 	hud.view_preset_selected.connect(_on_desktop_view_preset)
 	_set_hand_mesh_visible(false)
 	brick_palette.show()
-	_placement_preview = PlacementPreview.new()
-	add_child(_placement_preview)
 	_init_desktop_camera()
 	_init_webxr()
 
@@ -220,14 +217,19 @@ func _spawn_from_palette(type: String) -> void:
 	held_brick = scene.instantiate()
 	bricks_container.add_child(held_brick)
 	_held_rot_steps = 0
-	(held_brick as Brick).set_held(true)
+	var brick := held_brick as Brick
+	brick.set_placed(type, 0)
+	brick.set_held(true)
 
 func _grab_placed_brick(brick: Brick) -> void:
+	if brick.brick_type.is_empty():
+		return
 	_grabbed_type = brick.brick_type
 	_held_rot_steps = brick.rot_steps
 	held_brick = brick
-	_placed_bricks.erase(brick)
-	_rebuild_grid()
+	if _placed_bricks.has(brick):
+		_placed_bricks.erase(brick)
+		_rebuild_grid()
 	(brick as Brick).set_held(true)
 
 func _nearest_placed_brick(hand_pos: Vector3) -> Brick:
@@ -241,6 +243,17 @@ func _nearest_placed_brick(hand_pos: Vector3) -> Brick:
 		if d < best_dist:
 			best_dist = d
 			best = brick
+	for node in bricks_container.get_children():
+		if not is_instance_valid(node) or not node is Brick:
+			continue
+		var brick := node as Brick
+		if brick == held_brick or brick.is_thrown or _placed_bricks.has(brick):
+			continue
+		if not brick.brick_type.is_empty():
+			var d: float = brick.global_position.distance_to(hand_pos)
+			if d < best_dist:
+				best_dist = d
+				best = brick
 	return best
 
 func _vr_release_brick() -> void:
@@ -257,12 +270,9 @@ func _vr_release_brick() -> void:
 	var rot_y := _held_rot_y()
 	var p: Dictionary = BuildGrid.placement(_grabbed_type, hit, rot_y)
 	if p.is_empty():
-		held_brick = null
 		_clear_placement_preview()
 		return
 	_finalize_placement(held_brick as Brick, _grabbed_type, rot_y, p)
-	held_brick = null
-	_clear_placement_preview()
 
 func _clear_placement_preview() -> void:
 	if _placement_preview:
@@ -496,6 +506,8 @@ func _finalize_placement(brick: Brick, type: String, rot_y: float, preset: Dicti
 	brick.set_ghost(false)
 	BuildGrid.register_placed(type, p["position"], p["rot_steps"])
 	_placed_bricks.append(brick)
+	held_brick = null
+	_clear_placement_preview()
 	AudioManager.play_place()
 
 func _desktop_undo() -> void:

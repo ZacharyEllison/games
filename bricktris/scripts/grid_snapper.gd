@@ -43,9 +43,15 @@ static func rotated_studs(studs: Vector2i, steps: int) -> Vector2i:
 static func _stud_cell(rel: float) -> int:
 	return int(round(rel - 0.5))
 
-static func _min_stud_index(rel: float, _stud_count: int) -> int:
-	# Anchor the clicked stud column/row as the footprint minimum.
-	return _stud_cell(rel)
+static func _min_stud_index(rel: float, stud_count: int) -> int:
+	if stud_count <= 1:
+		return _stud_cell(rel)
+	# Keep the clicked stud inside the footprint; extend leftward when bridging stacks.
+	var clicked := _stud_cell(rel)
+	return clampi(clicked - stud_count + 1, 0, BuildLayout.DESK_STUDS - stud_count)
+
+static func _min_index_from_center(rel: float, stud_count: int) -> int:
+	return int(round(rel - stud_count * 0.5))
 
 static func _axis_center(origin: float, min_ix: int, stud_count: int) -> float:
 	return origin + (min_ix + stud_count * 0.5) * BuildLayout.STUD_PITCH
@@ -65,8 +71,8 @@ static func footprint_indices(center_xz: Vector2, studs: Vector2i) -> Array[Vect
 	var pitch := BuildLayout.STUD_PITCH
 	var rel_x := (center_xz.x - grid_origin_xz.x) / pitch
 	var rel_z := (center_xz.y - grid_origin_xz.y) / pitch
-	var min_ix := _min_stud_index(rel_x, studs.x)
-	var min_iz := _min_stud_index(rel_z, studs.y)
+	var min_ix := _min_index_from_center(rel_x, studs.x)
+	var min_iz := _min_index_from_center(rel_z, studs.y)
 	var cells: Array[Vector2i] = []
 	for ix in studs.x:
 		for iz in studs.y:

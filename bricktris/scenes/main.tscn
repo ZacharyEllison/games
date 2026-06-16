@@ -1,7 +1,8 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" uid="uid://dtiu7o5j21xqe" path="res://scripts/main.gd" id="1"]
 [ext_resource type="Script" uid="uid://d2o6pmxqd7522" path="res://scripts/brick_palette.gd" id="4"]
+[ext_resource type="Script" uid="uid://cj6kgka3wjqcj" path="res://scripts/placement_preview.gd" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/desk.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="3"]
 
@@ -67,6 +68,9 @@ directional_shadow_max_distance = 2.4
 [node name="BrickPalette" type="Node3D" parent="."]
 position = Vector3(0, 1.0, -0.45)
 script = ExtResource("4")
+
+[node name="PlacementPreview" type="Node3D" parent="."]
+script = ExtResource("5")
 
 [node name="Desk" parent="." instance=ExtResource("2")]
 
