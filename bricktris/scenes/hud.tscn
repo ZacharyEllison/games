@@ -13,8 +13,8 @@ anchor_right = 0.0
 anchor_bottom = 0.0
 offset_left = 12.0
 offset_top = 12.0
-offset_right = 220.0
-offset_bottom = 480.0
+offset_right = 200.0
+offset_bottom = 160.0
 
 [node name="VBox" type="VBoxContainer" parent="Panel"]
 layout_mode = 2
@@ -22,67 +22,6 @@ layout_mode = 2
 [node name="TitleLabel" type="Label" parent="Panel/VBox"]
 text = "Bricktris"
 theme_override_font_sizes/font_size = 18
-
-[node name="SectionLabel" type="Label" parent="Panel/VBox"]
-text = "Brick"
-theme_override_font_sizes/font_size = 12
-
-[node name="BrickGrid" type="GridContainer" parent="Panel/VBox"]
-unique_name_in_owner = true
-columns = 3
-
-[node name="Btn_1x1" type="Button" parent="Panel/VBox/BrickGrid"]
-text = "1x1"
-toggle_mode = true
-button_pressed = true
-metadata/type = "brick_1x1"
-
-[node name="Btn_1x2" type="Button" parent="Panel/VBox/BrickGrid"]
-text = "1x2"
-toggle_mode = true
-metadata/type = "brick_1x2"
-
-[node name="Btn_2x2" type="Button" parent="Panel/VBox/BrickGrid"]
-text = "2x2"
-toggle_mode = true
-metadata/type = "brick_2x2"
-
-[node name="Btn_1x4" type="Button" parent="Panel/VBox/BrickGrid"]
-text = "1x4"
-toggle_mode = true
-metadata/type = "brick_1x4"
-
-[node name="Btn_2x4" type="Button" parent="Panel/VBox/BrickGrid"]
-text = "2x4"
-toggle_mode = true
-metadata/type = "brick_2x4"
-
-[node name="Btn_P1x1" type="Button" parent="Panel/VBox/BrickGrid"]
-text = "P 1x1"
-toggle_mode = true
-metadata/type = "plate_1x1"
-
-[node name="Btn_P1x2" type="Button" parent="Panel/VBox/BrickGrid"]
-text = "P 1x2"
-toggle_mode = true
-metadata/type = "plate_1x2"
-
-[node name="Btn_P2x2" type="Button" parent="Panel/VBox/BrickGrid"]
-text = "P 2x2"
-toggle_mode = true
-metadata/type = "plate_2x2"
-
-[node name="Btn_Corner" type="Button" parent="Panel/VBox/BrickGrid"]
-text = "Corner"
-toggle_mode = true
-metadata/type = "brick_corner"
-
-[node name="Btn_Slope" type="Button" parent="Panel/VBox/BrickGrid"]
-text = "Slope"
-toggle_mode = true
-metadata/type = "brick_slope_1x2"
-
-[node name="HSep" type="HSeparator" parent="Panel/VBox"]
 
 [node name="EnterVRBtn" type="Button" parent="Panel/VBox"]
 unique_name_in_owner = true
@@ -99,7 +38,7 @@ text = ""
 theme_override_font_sizes/font_size = 11
 autowrap_mode = 3
 
-[node name="HSep2" type="HSeparator" parent="Panel/VBox"]
+[node name="HSep" type="HSeparator" parent="Panel/VBox"]
 
 [node name="ResetBtn" type="Button" parent="Panel/VBox"]
 unique_name_in_owner = true

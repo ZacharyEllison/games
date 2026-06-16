@@ -22,11 +22,13 @@ const BRICK_DEFS := {
 	"brick_slope_1x2": Vector3(1, 1, 2),
 }
 
+const DESK_TOP := 0.85  # desk is at y=0.8, top surface at y=0.85
+
 # Snap a world position to the nearest grid cell centre.
 # dims: the brick's stud dimensions from BRICK_DEFS.
 static func snap(world_pos: Vector3, dims: Vector3) -> Vector3:
 	var c: float = CELL_SIZE
 	var x: float = round(world_pos.x / c) * c + ((dims.x / 2.0) - 0.5) * c
-	var y: float = max(0.0, round(world_pos.y / c) * c)
+	var y: float = max(DESK_TOP, round(world_pos.y / c) * c)
 	var z: float = round(world_pos.z / c) * c + ((dims.z / 2.0) - 0.5) * c
 	return Vector3(x, y, z)

@@ -1,6 +1,7 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/brick_palette.gd" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/desk.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="3"]
 
@@ -52,6 +53,10 @@ position = Vector3(5, 10, 5)
 rotation = Vector3(-0.785398, 0.785398, 0)
 light_energy = 1.2
 shadow_enabled = true
+
+[node name="BrickPalette" type="Node3D" parent="."]
+position = Vector3(0, 1.15, -0.7)
+script = ExtResource("4")
 
 [node name="Desk" parent="." instance=ExtResource("2")]
 
