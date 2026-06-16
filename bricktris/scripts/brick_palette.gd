@@ -73,8 +73,8 @@ func update_highlight(hand_world_pos: Vector3) -> void:
 		return
 	for slot in _slots:
 		if slot["type"] == _highlighted_type:
-			(slot["brick"] as Brick).set_ghost(false)
+			(slot["brick"] as Brick).set_highlighted(false)
 	_highlighted_type = nearest
 	for slot in _slots:
 		if slot["type"] == nearest:
-			(slot["brick"] as Brick).set_ghost(true)
+			(slot["brick"] as Brick).set_highlighted(true)

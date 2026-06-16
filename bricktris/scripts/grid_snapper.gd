@@ -1,11 +1,12 @@
 class_name GridSnapper
 extends RefCounted
 
-# Kenney bricks are ~1 Godot unit per stud at native scale.
-# We scale all bricks by BRICK_SCALE so 1 stud = 0.04m (4cm) in VR.
+# All bricks are scaled by BRICK_SCALE so 1 Kenney stud = 0.08m in world space.
 const BRICK_SCALE := 0.08
-const CELL_SIZE := 0.08  # world-space size of one stud after scaling (8cm per stud)
+const CELL_SIZE   := 0.08   # horizontal grid pitch in metres
 
+# XZ footprint (studs) and Y height (raw Kenney units) per brick type.
+# The Y value is the unscaled collision-shape half-extent used for precise floor offset.
 const BRICK_DEFS := {
 	"brick_1x1":       Vector3(1, 1, 1),
 	"brick_1x2":       Vector3(1, 1, 2),
@@ -19,13 +20,32 @@ const BRICK_DEFS := {
 	"brick_slope_1x2": Vector3(1, 1, 2),
 }
 
-# Desk surface y-position (top of the baseplate)
-const DESK_Y := 0.81  # desk at y=0.8, surface at y=0.81
+# Actual full heights in Kenney units (from each brick scene's BoxShape3D size.y).
+const BRICK_HEIGHTS := {
+	"brick_1x1":       1.2,
+	"brick_1x2":       1.2,
+	"brick_2x2":       1.2,
+	"brick_1x4":       1.2,
+	"brick_2x4":       1.2,
+	"plate_1x1":       0.48,
+	"plate_1x2":       0.48,
+	"plate_2x2":       0.48,
+	"brick_corner":    1.2,
+	"brick_slope_1x2": 1.2,
+}
 
-# Snap a world position to the nearest grid cell on the baseplate.
-static func snap(world_pos: Vector3, dims: Vector3) -> Vector3:
+# Desk top-surface Y in world space  (desk node at y=0.8, half-depth 0.01)
+const DESK_Y := 0.81
+
+# Return the Y-centre for a brick of the given type resting on the desk surface.
+static func floor_y(type: String) -> float:
+	var h: float = BRICK_HEIGHTS.get(type, 1.2) * BRICK_SCALE
+	return DESK_Y + h * 0.5 + 0.002   # 2 mm clearance to prevent tunnelling
+
+# Snap a world position to the nearest XZ grid cell.
+# Y is not snapped here — use floor_y() for surface placement.
+static func snap(world_pos: Vector3) -> Vector3:
 	var c: float = CELL_SIZE
 	var x: float = round(world_pos.x / c) * c
-	var y: float = max(DESK_Y, round(world_pos.y / c) * c)
 	var z: float = round(world_pos.z / c) * c
-	return Vector3(x, y, z)
+	return Vector3(x, world_pos.y, z)
