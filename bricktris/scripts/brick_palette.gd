@@ -20,9 +20,9 @@ const LAYOUT: Array = [
 	["plate_1x1", "plate_1x2", "plate_2x2", "brick_corner", "brick_slope_1x2"],
 ]
 
-const COL_SPACING := 0.52
-const ROW_SPACING := 0.42
-const GRAB_RADIUS := 0.18
+const COL_SPACING := BuildLayout.PALETTE_COL_SPACING
+const ROW_SPACING := BuildLayout.PALETTE_ROW_SPACING
+const GRAB_RADIUS := BuildLayout.PALETTE_GRAB_RADIUS
 
 var _slots: Array = []
 var _highlighted_type := ""

@@ -4,6 +4,7 @@ extends CanvasLayer
 signal reset_requested
 signal enter_vr_requested
 signal brick_type_selected(type: String)
+signal view_preset_selected(preset: int)
 
 const BRICK_GROUPS := [
 	{
@@ -38,9 +39,20 @@ const TYPE_LABELS := {
 @onready var desktop_reset_btn: Button = %DesktopResetBtn
 @onready var desktop_palette: PanelContainer = %DesktopPalette
 @onready var palette_list: VBoxContainer = %PaletteList
+@onready var view_list: GridContainer = %ViewList
 @onready var hint_label: Label = %HintLabel
 
+const VIEW_PRESETS := [
+	DesktopCamera.Preset.ORBIT,
+	DesktopCamera.Preset.FRONT,
+	DesktopCamera.Preset.TOP,
+	DesktopCamera.Preset.ORTHO,
+	DesktopCamera.Preset.LEFT,
+	DesktopCamera.Preset.ISO,
+]
+
 var _type_buttons: Dictionary = {}
+var _view_buttons: Dictionary = {}
 var _selected_type := "brick_1x1"
 var _xr_available := false
 
@@ -51,6 +63,27 @@ func _ready() -> void:
 	desktop_vr_status_label.text = "Checking XR support..."
 	_show_desktop_ui()
 	_build_palette_ui()
+	_build_view_ui()
+
+func _build_view_ui() -> void:
+	for preset in VIEW_PRESETS:
+		var btn := Button.new()
+		btn.text = DesktopCamera.preset_name(preset)
+		btn.toggle_mode = true
+		btn.custom_minimum_size = Vector2(52, 32)
+		btn.add_theme_font_size_override("font_size", 11)
+		btn.pressed.connect(_on_view_btn_pressed.bind(preset))
+		view_list.add_child(btn)
+		_view_buttons[preset] = btn
+	_select_view(DesktopCamera.Preset.ORBIT)
+
+func _on_view_btn_pressed(preset: int) -> void:
+	_select_view(preset)
+	view_preset_selected.emit(preset)
+
+func _select_view(preset: int) -> void:
+	for p in _view_buttons:
+		(_view_buttons[p] as Button).button_pressed = (p == preset)
 
 func _build_palette_ui() -> void:
 	for group in BRICK_GROUPS:
@@ -118,6 +151,9 @@ func set_vr_status(status: String) -> void:
 func on_xr_started() -> void:
 	desktop_palette.hide()
 	hint_label.hide()
+
+func set_active_view(preset: int) -> void:
+	_select_view(preset)
 
 func on_xr_ended() -> void:
 	if _xr_available:

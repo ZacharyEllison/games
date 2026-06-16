@@ -1,24 +1,26 @@
 [gd_scene load_steps=5 format=3]
 
 [sub_resource type="BoxMesh" id="BoxMesh_1"]
-size = Vector3(1.6, 0.02, 1.6)
+size = Vector3(1.59, 0.02, 1.59)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_1"]
-size = Vector3(1.6, 0.02, 1.6)
+size = Vector3(1.59, 0.02, 1.59)
 
 [sub_resource type="Shader" id="Shader_1"]
 code = "shader_type spatial;
-render_mode unshaded;
-uniform vec4 bg_color : source_color = vec4(0.15, 0.17, 0.22, 1.0);
-uniform vec4 line_color : source_color = vec4(0.32, 0.36, 0.46, 1.0);
-uniform vec4 stud_color : source_color = vec4(0.4, 0.44, 0.54, 1.0);
-uniform vec2 grid_origin = vec2(0.0, -0.8);
+uniform vec4 bg_color : source_color = vec4(0.12, 0.14, 0.18, 1.0);
+uniform vec4 line_color : source_color = vec4(0.28, 0.32, 0.42, 1.0);
+uniform vec4 stud_color : source_color = vec4(0.52, 0.56, 0.66, 1.0);
+uniform vec2 grid_origin = vec2(0.0, 0.0);
 uniform float cell_size = 0.0795;
 uniform float line_width = 0.003;
-uniform float stud_radius = 0.011;
+uniform float stud_radius = 0.013;
+uniform vec3 light_dir = vec3(0.35, 1.0, 0.25);
 varying vec3 world_pos;
+varying vec3 world_normal;
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 void fragment() {
 	vec2 f = fract((world_pos.xz - grid_origin) / cell_size);
@@ -29,8 +31,10 @@ void fragment() {
 		0.0, 1.0);
 	vec2 d = f - 0.5;
 	float on_stud = step(length(d), stud_radius / cell_size);
-	vec3 col = mix(bg_color.rgb, line_color.rgb, on_line);
-	col = mix(col, stud_color.rgb, on_stud * (1.0 - on_line));
+	vec3 base = mix(bg_color.rgb, line_color.rgb, on_line);
+	base = mix(base, stud_color.rgb, on_stud * (1.0 - on_line));
+	float ndotl = max(dot(normalize(world_normal), normalize(light_dir)), 0.0);
+	vec3 col = base * (0.55 + ndotl * 0.45);
 	ALBEDO = col;
 }"
 
@@ -43,7 +47,7 @@ collision_layer = 1
 collision_mask = 0
 
 [node name="DeskMesh" type="MeshInstance3D" parent="."]
-cast_shadow = 0
+gi_mode = 0
 mesh = SubResource("BoxMesh_1")
 surface_material_override/0 = SubResource("ShaderMaterial_1")
 

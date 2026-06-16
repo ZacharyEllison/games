@@ -41,6 +41,17 @@ unique_name_in_owner = true
 size_flags_vertical = 3
 theme_override_constants/separation = 6
 
+[node name="ViewLabel" type="Label" parent="DesktopPalette/VBox"]
+text = "View"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.65, 0.7, 0.82, 1)
+
+[node name="ViewList" type="GridContainer" parent="DesktopPalette/VBox"]
+unique_name_in_owner = true
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 3
+
 [node name="HSep" type="HSeparator" parent="DesktopPalette/VBox"]
 
 [node name="DesktopResetBtn" type="Button" parent="DesktopPalette/VBox"]
@@ -61,6 +72,6 @@ offset_right = 220.0
 offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 0
-text = "Click to place  |  R rotate  |  Ctrl+Z undo  |  Right-drag orbit"
+text = "Click place  |  R rotate  |  Ctrl+Z undo  |  Right-drag orbit  |  Scroll zoom"
 theme_override_font_sizes/font_size = 11
 horizontal_alignment = 1
