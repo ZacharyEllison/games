@@ -53,6 +53,10 @@ mesh = SubResource("SphereMesh_1")
 tracker = "left_hand"
 position = Vector3(-0.3, 1.2, -0.4)
 
+[node name="LeftHandMesh" type="MeshInstance3D" parent="XROrigin3D/LeftHand"]
+cast_shadow = 0
+mesh = SubResource("SphereMesh_1")
+
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_1")
 

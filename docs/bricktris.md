@@ -65,7 +65,7 @@ When recovering cells from a placed brick center, use center-based min index (`_
 
 `BuildGrid` keeps a per-stud-column **seat Y** map. New brick bottom Y = max desk surface and seat under any footprint cell. A brick spanning columns at different heights sits level on the **taller** support (LEGO-like).
 
-When the ray hits an existing brick, **snap aligns to the support run under the click** (same seat height, contiguous studs). Equal spans share the same min stud index; narrower pieces (e.g. **2×2 on 1×4**) anchor the **clicked stud as the near peg** and span forward within the run; deeper pieces align their first row on the support row.
+When the ray hits an existing brick, **snap aligns to the support run under the click** (same seat height, contiguous studs). Equal spans share the same min stud index. Narrower/deeper pieces pick **whichever peg connects** to the clicked stud: the hit position within the stud cell chooses whether that stud is the near or far peg along each axis (e.g. **2×2 on 1×4** — click stud 2 can become pegs 1–2 or 2–3 depending on where on the stud you aim).
 
 Placement rejects footprints outside the 10×10 grid via `footprint_fits_desk()`.
 
@@ -89,9 +89,10 @@ Placement rejects footprints outside the 10×10 grid via `footprint_fits_desk()`
 
 ### VR
 
+- **Either controller** works: squeeze/grip on left (source 0) or right (source 1) grabs; release on the **same** hand places. While holding, that hand drives position, rotation, and throw velocity.
 - Grip / squeeze: grab from palette or re-grab placed brick; release to snap-place.
 - Fast release → throw (velocity averaged over 4 frames).
-- Thumbstick X flick: rotate held brick 90°.
+- Thumbstick **right** / **left**: rotate held brick 90° clockwise / counter-clockwise (one step per flick).
 
 ### Desktop
 

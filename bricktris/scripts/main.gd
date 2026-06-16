@@ -13,6 +13,7 @@ var held_brick: Node3D = null
 var _grabbed_type := ""
 var _held_rot_steps := 0
 var _rotated_this_flick := false
+var _active_hand: XRController3D = null
 
 var _placed_bricks: Array = []
 
@@ -40,8 +41,10 @@ var _cam_preset := DesktopCamera.Preset.ORBIT
 var _cam_orbit_drag := false
 
 @onready var _placement_preview: Node3D = $PlacementPreview
+@onready var left_hand: XRController3D = $XROrigin3D/LeftHand
 @onready var right_hand: XRController3D = $XROrigin3D/RightHand
 @onready var right_hand_mesh: MeshInstance3D = $XROrigin3D/RightHand/RightHandMesh
+@onready var left_hand_mesh: MeshInstance3D = $XROrigin3D/LeftHand/LeftHandMesh
 @onready var cam: XRCamera3D = $XROrigin3D/XRCamera3D
 @onready var xr_origin: XROrigin3D = $XROrigin3D
 @onready var bricks_container: Node3D = $Bricks
@@ -59,6 +62,8 @@ func _ready() -> void:
 	_saved_bg_color = env.background_color
 	right_hand.button_pressed.connect(_on_right_button_pressed)
 	right_hand.button_released.connect(_on_right_button_released)
+	left_hand.button_pressed.connect(_on_left_button_pressed)
+	left_hand.button_released.connect(_on_left_button_released)
 	hud.reset_requested.connect(_on_reset)
 	hud.enter_vr_requested.connect(_on_enter_vr)
 	hud.view_preset_selected.connect(_on_desktop_view_preset)
@@ -136,6 +141,37 @@ func _set_passthrough(on: bool) -> void:
 
 func _set_hand_mesh_visible(visible: bool) -> void:
 	right_hand_mesh.visible = visible
+	left_hand_mesh.visible = visible
+
+func _hand_for_input_source(input_source_id: int) -> XRController3D:
+	match input_source_id:
+		0:
+			return left_hand
+		1:
+			return right_hand
+	return null
+
+func _vr_hand() -> XRController3D:
+	if not _in_vr:
+		return right_hand
+	if held_brick and _active_hand:
+		return _active_hand
+	return _nearest_live_hand_to(brick_palette.global_position)
+
+func _hand_is_live(hand: XRController3D) -> bool:
+	return hand.get_is_active()
+
+func _nearest_live_hand_to(target: Vector3) -> XRController3D:
+	var best: XRController3D = right_hand
+	var best_dist := INF
+	for hand in [left_hand, right_hand]:
+		if not _hand_is_live(hand):
+			continue
+		var d: float = hand.global_position.distance_squared_to(target)
+		if d < best_dist:
+			best_dist = d
+			best = hand
+	return best
 
 func _layout_workspace() -> void:
 	desk.global_position = BuildLayout.desk_position()
@@ -180,25 +216,39 @@ func _on_visibility_changed() -> void:
 	get_tree().paused = (webxr_interface.visibility_state != "visible")
 
 func _on_squeeze_start(input_source_id: int) -> void:
-	if input_source_id == 1:
-		_try_grab()
+	var hand := _hand_for_input_source(input_source_id)
+	if hand:
+		_try_grab(hand)
 
 func _on_squeeze_end(input_source_id: int) -> void:
-	if input_source_id == 1:
+	var hand := _hand_for_input_source(input_source_id)
+	if hand and hand == _active_hand:
 		_vr_release_brick()
 
 func _on_right_button_pressed(button: String) -> void:
-	if button == "grip_click":
-		_try_grab()
+	_on_hand_button_pressed(right_hand, button, true)
 
 func _on_right_button_released(button: String) -> void:
-	if button == "grip_click":
+	_on_hand_button_pressed(right_hand, button, false)
+
+func _on_left_button_pressed(button: String) -> void:
+	_on_hand_button_pressed(left_hand, button, true)
+
+func _on_left_button_released(button: String) -> void:
+	_on_hand_button_pressed(left_hand, button, false)
+
+func _on_hand_button_pressed(hand: XRController3D, button: String, pressed: bool) -> void:
+	if button != "grip_click":
+		return
+	if pressed:
+		_try_grab(hand)
+	elif hand == _active_hand:
 		_vr_release_brick()
 
-func _try_grab() -> void:
+func _try_grab(hand: XRController3D) -> void:
 	if held_brick:
 		return
-	var hand_pos := right_hand.global_position
+	var hand_pos := hand.global_position
 	var palette_hit: Dictionary = brick_palette.query_nearest(hand_pos)
 	var placed: Brick = _nearest_placed_brick(hand_pos)
 	var palette_dist: float = palette_hit["distance"]
@@ -208,6 +258,9 @@ func _try_grab() -> void:
 		_grab_placed_brick(placed)
 	elif not palette_hit["type"].is_empty():
 		_spawn_from_palette(palette_hit["type"])
+	if held_brick:
+		_active_hand = hand
+		_reset_hand_tracking()
 
 func _spawn_from_palette(type: String) -> void:
 	_grabbed_type = type
@@ -263,16 +316,18 @@ func _vr_release_brick() -> void:
 	if throw_speed >= THROW_SPEED_THRESHOLD:
 		_throw_held(_release_velocity(), _release_angular_velocity())
 		return
-	var drop_dir := Vector3.DOWN if not _in_vr else -right_hand.global_transform.basis.y
-	var hit := _raycast_surface(right_hand.global_position, drop_dir)
+	var drop_dir := Vector3.DOWN if not _in_vr else -_vr_hand().global_transform.basis.y
+	var hand := _vr_hand()
+	var hit := _raycast_surface(hand.global_position, drop_dir)
 	if hit == Vector3.INF:
-		hit = right_hand.global_position
+		hit = hand.global_position
 	var rot_y := _held_rot_y()
 	var p: Dictionary = BuildGrid.placement(_grabbed_type, hit, rot_y)
 	if p.is_empty():
 		_clear_placement_preview()
 		return
 	_finalize_placement(held_brick as Brick, _grabbed_type, rot_y, p)
+	_active_hand = null
 
 func _clear_placement_preview() -> void:
 	if _placement_preview:
@@ -295,6 +350,7 @@ func _release_angular_velocity() -> Vector3:
 func _throw_held(lin_vel: Vector3, ang_vel: Vector3) -> void:
 	var brick := held_brick as Brick
 	held_brick = null
+	_active_hand = null
 	_clear_placement_preview()
 	brick.begin_throw(lin_vel, ang_vel)
 	_thrown_bricks.append(brick)
@@ -331,17 +387,22 @@ func _track_hand_motion(hand_pos: Vector3, delta: float, hand_basis: Basis) -> v
 		_hand_prev_basis = hand_basis
 
 func _process_vr(delta: float) -> void:
-	var hand_pos := right_hand.global_position
-	var hand_basis := right_hand.global_transform.basis
+	var hand := _vr_hand()
+	var hand_pos := hand.global_position
+	var hand_basis := hand.global_transform.basis
 	_track_hand_motion(hand_pos, delta, hand_basis)
 
 	if held_brick:
 		held_brick.global_position = hand_pos
 		held_brick.rotation = Vector3(0, _held_rot_y(), 0)
-		var axes := right_hand.get_vector2("primary")
-		if axes.x > 0.7 and not _rotated_this_flick:
-			_held_rot_steps = (_held_rot_steps + 1) % 4
-			_rotated_this_flick = true
+		var axes := hand.get_vector2("primary")
+		if not _rotated_this_flick:
+			if axes.x > 0.7:
+				_held_rot_steps = (_held_rot_steps + 1) % 4
+				_rotated_this_flick = true
+			elif axes.x < -0.7:
+				_held_rot_steps = (_held_rot_steps + 3) % 4
+				_rotated_this_flick = true
 		elif abs(axes.x) < 0.3:
 			_rotated_this_flick = false
 	else:
@@ -473,7 +534,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if hud.is_pointer_over_ui(get_viewport().get_mouse_position()):
 				return
 			if event.pressed:
-				_try_grab()
+				_try_grab(right_hand)
 			else:
 				_vr_release_brick()
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
@@ -518,6 +579,7 @@ func _rebuild_grid() -> void:
 
 func _on_reset() -> void:
 	_clear_placement_preview()
+	_active_hand = null
 	if held_brick:
 		held_brick.queue_free()
 		held_brick = null

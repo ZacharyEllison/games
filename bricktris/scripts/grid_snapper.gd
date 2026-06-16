@@ -43,28 +43,50 @@ static func rotated_studs(studs: Vector2i, steps: int) -> Vector2i:
 static func _stud_cell(rel: float) -> int:
 	return int(round(rel - 0.5))
 
-static func _min_stud_index(rel: float, stud_count: int) -> int:
+static func _peg_connect_min_index(rel: float, stud_count: int, run_min: int, run_max: int) -> int:
 	if stud_count <= 1:
-		return _stud_cell(rel)
-	# Keep the clicked stud inside the footprint; extend leftward when bridging stacks.
-	var clicked := _stud_cell(rel)
-	return clampi(clicked - stud_count + 1, 0, BuildLayout.DESK_STUDS - stud_count)
+		var click := _stud_cell(rel)
+		if run_min >= 0:
+			return clampi(click, run_min, run_max)
+		return clampi(click, 0, BuildLayout.DESK_STUDS - 1)
+
+	var click := _stud_cell(rel)
+	var frac := rel - float(click) - 0.5
+	# Footprint min indices where `click` is one of the peg columns/rows.
+	var peg_lo := click - stud_count + 1
+	var peg_hi := click
+	var bound_lo := 0
+	var bound_hi := BuildLayout.DESK_STUDS - stud_count
+
+	if run_min >= 0:
+		var run_width := run_max - run_min + 1
+		if stud_count == run_width:
+			return run_min
+		if stud_count < run_width:
+			bound_lo = maxi(bound_lo, run_min)
+			bound_hi = mini(bound_hi, run_max - stud_count + 1)
+		else:
+			bound_lo = maxi(bound_lo, run_max - stud_count + 1)
+			bound_hi = mini(bound_hi, run_min)
+
+	var want_hi := frac < 0.0
+	var min_ix := peg_hi if want_hi else peg_lo
+	var lo := maxi(peg_lo, bound_lo)
+	var hi := mini(peg_hi, bound_hi)
+	if lo > hi:
+		min_ix = clampi(click, bound_lo, bound_hi)
+	else:
+		min_ix = clampi(min_ix, lo, hi)
+	return min_ix
+
+static func _min_stud_index(rel: float, stud_count: int) -> int:
+	return _peg_connect_min_index(rel, stud_count, -1, -1)
 
 static func _min_index_from_center(rel: float, stud_count: int) -> int:
 	return int(round(rel - stud_count * 0.5))
 
 static func _axis_center(origin: float, min_ix: int, stud_count: int) -> float:
 	return origin + (min_ix + stud_count * 0.5) * BuildLayout.STUD_PITCH
-
-static func _align_min_on_run(click: int, stud_count: int, run_min: int, run_max: int) -> int:
-	var run_width := run_max - run_min + 1
-	if stud_count == run_width:
-		return run_min
-	if stud_count < run_width:
-		# Clicked stud is the anchor peg (min corner); span forward within the run.
-		return clampi(click, run_min, run_max - stud_count + 1)
-	# Footprint deeper/wider than support — align near edge on the support.
-	return run_min
 
 static func snap_xz(hit: Vector3, studs: Vector2i) -> Vector2:
 	var pitch := BuildLayout.STUD_PITCH
@@ -75,8 +97,8 @@ static func snap_xz(hit: Vector3, studs: Vector2i) -> Vector2:
 
 	var run_x := BuildGrid.support_run_x(click_ix, click_iz)
 	var run_z := BuildGrid.support_run_z(click_ix, click_iz)
-	var min_ix := _align_min_on_run(click_ix, studs.x, run_x.x, run_x.y) if run_x.x >= 0 else _min_stud_index(rel_x, studs.x)
-	var min_iz := _align_min_on_run(click_iz, studs.y, run_z.x, run_z.y) if run_z.x >= 0 else _min_stud_index(rel_z, studs.y)
+	var min_ix := _peg_connect_min_index(rel_x, studs.x, run_x.x, run_x.y) if run_x.x >= 0 else _min_stud_index(rel_x, studs.x)
+	var min_iz := _peg_connect_min_index(rel_z, studs.y, run_z.x, run_z.y) if run_z.x >= 0 else _min_stud_index(rel_z, studs.y)
 
 	return Vector2(
 		_axis_center(grid_origin_xz.x, min_ix, studs.x),
