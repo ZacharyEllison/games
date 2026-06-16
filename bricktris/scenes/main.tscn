@@ -1,7 +1,7 @@
 [gd_scene load_steps=6 format=3]
 
-[ext_resource type="Script" path="res://scripts/main.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/brick_palette.gd" id="4"]
+[ext_resource type="Script" uid="uid://dtiu7o5j21xqe" path="res://scripts/main.gd" id="1"]
+[ext_resource type="Script" uid="uid://d2o6pmxqd7522" path="res://scripts/brick_palette.gd" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/desk.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="3"]
 
