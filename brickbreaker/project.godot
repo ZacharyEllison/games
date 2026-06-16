@@ -21,6 +21,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 AudioManager="*res://scripts/audio_manager.gd"
+SaveManager="*res://scripts/save_manager.gd"
 
 [display]
 
@@ -58,7 +59,6 @@ pause={
 [input_devices]
 
 pointing/emulate_touch_from_mouse=true
-pointing/emulate_mouse_from_touch=true
 
 [rendering]
 

@@ -41,12 +41,15 @@ func _ready() -> void:
 	var screen := get_viewport_rect().size
 	_paddle_y = screen.y * 0.85
 	paddle.global_position = Vector2(screen.x * 0.5, _paddle_y)
+	grid.brick_scored.connect(_on_brick_scored)
 	grid.brick_destroyed.connect(_on_brick_destroyed)
 	grid.cleared.connect(_on_level_cleared)
 	hud.pause_requested.connect(_on_pause_requested)
 	hud.resume_requested.connect(_on_resume_requested)
 	hud.restart_requested.connect(_on_restart_from_pause)
 	hud.level_selected.connect(_on_level_selected)
+	max_unlocked_level = SaveManager.max_unlocked_level
+	hud.set_high_score(SaveManager.high_score)
 	_new_game()
 
 func _paddle_y_for_screen() -> float:
@@ -57,7 +60,6 @@ func _new_game() -> void:
 	level = 1
 	score = 0
 	lives = 3
-	max_unlocked_level = 1
 	_lives_lost_this_level = 0
 	_level_points = 0
 	hud.set_score(score)
@@ -115,7 +117,12 @@ func _process(_delta: float) -> void:
 			hud.hide_tap_prompt()
 	elif state == State.GAME_OVER or state == State.VICTORY:
 		if Input.is_action_just_pressed("press"):
+			AudioManager.unlock()
 			_new_game()
+	elif state == State.LEVEL_CLEAR:
+		if Input.is_action_just_pressed("press"):
+			AudioManager.unlock()
+			_advance_after_perfect()
 
 func spawn_extra_balls(pos: Vector2, count: int, speed_scale: float = 1.0) -> void:
 	if state != State.PLAYING:
@@ -149,17 +156,21 @@ func _on_ball_lost(ball: Node) -> void:
 		if lives <= 0:
 			state = State.GAME_OVER
 			hud.hide_tap_prompt()
-			hud.show_game_over(score)
+			var new_best := SaveManager.record_game_end(score, false)
+			hud.set_high_score(SaveManager.high_score)
+			hud.show_game_over(score, SaveManager.high_score, new_best, SaveManager.games_played, SaveManager.games_won)
 		else:
 			_clear_powerups()
 			_spawn_held_ball()
 			state = State.IDLE
 			hud.show_tap_prompt()
 
-func _on_brick_destroyed(points: int, pos: Vector2, tier: int) -> void:
+func _on_brick_scored(points: int, _pos: Vector2, _tier: int) -> void:
 	score += points
 	_level_points += points
 	hud.set_score(score)
+
+func _on_brick_destroyed(pos: Vector2, tier: int) -> void:
 	var chance: float = POWERUP_CHANCE_BY_TIER.get(tier, 0.03)
 	if randf() < chance:
 		_drop_powerup(pos, tier)
@@ -210,20 +221,36 @@ func _on_level_cleared() -> void:
 	hud.hide_tap_prompt()
 	_clear_balls()
 	_clear_powerups()
-	if _lives_lost_this_level == 0 and _level_points > 0:
+	var was_perfect := _lives_lost_this_level == 0 and _level_points > 0
+	if was_perfect:
 		score += _level_points
 		hud.set_score(score)
 		hud.show_perfect()
 		hud.slam_score()
 	max_unlocked_level = mini(maxi(max_unlocked_level, level + 1), MAX_LEVEL)
+	SaveManager.set_max_unlocked_level(max_unlocked_level)
 	if level >= MAX_LEVEL:
 		state = State.VICTORY
+		hud.hide_perfect()
 		hud.hide_tap_prompt()
-		hud.show_victory(score)
+		var new_best := SaveManager.record_game_end(score, true)
+		hud.set_high_score(SaveManager.high_score)
+		hud.show_victory(score, SaveManager.high_score, new_best, SaveManager.games_played, SaveManager.games_won)
+		return
+	if was_perfect:
+		hud.show_tap_prompt("TAP TO CONTINUE")
 		return
 	hud.show_message("LEVEL %d" % (level + 1))
 	await get_tree().create_timer(1.2).timeout
 	hud.hide_message()
+	level += 1
+	_start_level()
+
+func _advance_after_perfect() -> void:
+	if state != State.LEVEL_CLEAR:
+		return
+	hud.hide_perfect()
+	hud.hide_tap_prompt()
 	level += 1
 	_start_level()
 

@@ -17,6 +17,16 @@ theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 26
 text = "SCORE 0"
 
+[node name="BestScore" type="Label" parent="."]
+offset_left = 12.0
+offset_top = 42.0
+offset_right = 220.0
+offset_bottom = 66.0
+theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
+theme_override_fonts/font = ExtResource("2")
+theme_override_font_sizes/font_size = 18
+text = "BEST 0"
+
 [node name="Lives" type="Label" parent="."]
 offset_left = 320.0
 offset_top = 10.0
@@ -44,9 +54,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -160.0
-offset_top = -80.0
+offset_top = -150.0
 offset_right = 160.0
-offset_bottom = -30.0
+offset_bottom = -90.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_fonts/font = ExtResource("2")
@@ -63,9 +73,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -140.0
-offset_top = 10.0
+offset_top = -70.0
 offset_right = 140.0
-offset_bottom = 120.0
+offset_bottom = 90.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -104,6 +114,66 @@ text = "SCORE 0"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="BestScoreLine" type="Label" parent="GameOverPanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -130.0
+offset_top = 18.0
+offset_right = 130.0
+offset_bottom = 42.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
+theme_override_fonts/font = ExtResource("2")
+theme_override_font_sizes/font_size = 22
+text = "BEST 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="NewBestBadge" type="Label" parent="GameOverPanel"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -90.0
+offset_top = 44.0
+offset_right = 90.0
+offset_bottom = 72.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("2")
+theme_override_font_sizes/font_size = 24
+text = "NEW BEST!"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StatsLine" type="Label" parent="GameOverPanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -130.0
+offset_top = 72.0
+offset_right = 130.0
+offset_bottom = 96.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.65, 0.7, 0.78, 1)
+theme_override_fonts/font = ExtResource("2")
+theme_override_font_sizes/font_size = 18
+text = "Games: 0 · Wins: 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="TapPrompt" type="Label" parent="."]
 visible = false
 anchors_preset = 8
@@ -125,13 +195,21 @@ vertical_alignment = 1
 
 [node name="PerfectBadge" type="Label" parent="."]
 visible = false
-offset_left = 300.0
-offset_top = 48.0
-offset_right = 468.0
-offset_bottom = 88.0
-horizontal_alignment = 2
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -140.0
+offset_top = -28.0
+offset_right = 140.0
+offset_bottom = 28.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_alignment = 1
+vertical_alignment = 1
 theme_override_fonts/font = ExtResource("2")
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 44
 text = "PERFECT"
 
 [node name="FloatingLayer" type="Control" parent="."]

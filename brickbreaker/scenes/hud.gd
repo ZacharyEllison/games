@@ -5,10 +5,14 @@ const COMIC_FONT := preload("res://fonts/ComicNeue-Bold.ttf")
 const MAX_LEVEL := 10
 
 @onready var score_label: Label = $Score
+@onready var best_score_label: Label = $BestScore
 @onready var lives_label: Label = $Lives
 @onready var message: Label = $Message
 @onready var tap_prompt: Label = $TapPrompt
 @onready var final_score: Label = $GameOverPanel/FinalScore
+@onready var best_score_line: Label = $GameOverPanel/BestScoreLine
+@onready var new_best_badge: Label = $GameOverPanel/NewBestBadge
+@onready var stats_line: Label = $GameOverPanel/StatsLine
 @onready var bang_backdrop: Control = $GameOverPanel/BangBackdrop
 @onready var game_over_panel: Control = $GameOverPanel
 @onready var perfect_badge: Label = $PerfectBadge
@@ -45,6 +49,7 @@ func _ready() -> void:
 	tap_prompt.hide()
 	game_over_panel.hide()
 	perfect_badge.hide()
+	new_best_badge.hide()
 	pause_overlay.hide()
 	level_select_panel.hide()
 	pause_btn.pressed.connect(_on_pause_btn_pressed)
@@ -56,6 +61,9 @@ func _ready() -> void:
 func set_score(value: int) -> void:
 	score_label.text = "SCORE %d" % value
 	_bump(score_label)
+
+func set_high_score(value: int) -> void:
+	best_score_label.text = "BEST %d" % value
 
 func set_lives(value: int) -> void:
 	lives_label.text = "LIVES %d" % value
@@ -73,7 +81,8 @@ func show_message(text: String) -> void:
 func hide_message() -> void:
 	message.hide()
 
-func show_tap_prompt() -> void:
+func show_tap_prompt(text: String = "TAP TO PLAY") -> void:
+	tap_prompt.text = text
 	tap_prompt.show()
 	_start_float(tap_prompt)
 
@@ -81,57 +90,60 @@ func hide_tap_prompt() -> void:
 	_stop_float(tap_prompt)
 	tap_prompt.hide()
 
-func show_game_over(score: int) -> void:
+func show_game_over(score: int, high_score: int, new_best: bool, games_played: int, games_won: int) -> void:
 	hide_tap_prompt()
 	message.text = "GAME OVER"
 	message.show()
 	_slam_in(message, 0.4)
 	game_over_panel.show()
-	final_score.text = "SCORE %d" % score
-	final_score.material = null
-	bang_backdrop.hide()
-	if score > 2000:
-		bang_backdrop.show()
-	if score > 1000:
-		final_score.material = _rainbow_mat
-	_slam_in(final_score, 0.3)
+	_show_end_panel(score, high_score, new_best, games_played, games_won)
+	show_tap_prompt("TAP TO PLAY AGAIN")
 
 func hide_game_over() -> void:
 	game_over_panel.hide()
 	message.hide()
+	new_best_badge.hide()
+	hide_tap_prompt()
 
-func show_victory(score: int) -> void:
+func show_victory(score: int, high_score: int, new_best: bool, games_played: int, games_won: int) -> void:
 	hide_tap_prompt()
 	hide_game_over()
 	message.text = "YOU WIN!"
 	message.show()
 	_slam_in(message, 0.4)
 	game_over_panel.show()
+	_show_end_panel(score, high_score, new_best, games_played, games_won)
+	show_tap_prompt("TAP TO PLAY AGAIN")
+
+func hide_victory() -> void:
+	hide_game_over()
+
+func _show_end_panel(score: int, high_score: int, new_best: bool, games_played: int, games_won: int) -> void:
 	final_score.text = "SCORE %d" % score
 	final_score.material = null
+	best_score_line.text = "BEST %d" % high_score
+	stats_line.text = "Games: %d · Wins: %d" % [games_played, games_won]
+	new_best_badge.visible = new_best
 	bang_backdrop.hide()
 	if score > 2000:
 		bang_backdrop.show()
 	if score > 1000:
 		final_score.material = _rainbow_mat
 	_slam_in(final_score, 0.3)
-
-func hide_victory() -> void:
-	hide_game_over()
+	if new_best:
+		new_best_badge.material = _gold_mat
+		_slam_in(new_best_badge, 0.25)
 
 func show_perfect() -> void:
 	perfect_badge.show()
 	perfect_badge.material = _gold_mat
 	_slam_in(perfect_badge, 0.25)
 	_start_float(perfect_badge)
-	var tween := create_tween()
-	tween.tween_interval(2.0)
-	tween.tween_property(perfect_badge, "modulate:a", 0.0, 0.5)
-	tween.tween_callback(func():
-		_stop_float(perfect_badge)
-		perfect_badge.hide()
-		perfect_badge.modulate.a = 1.0
-	)
+
+func hide_perfect() -> void:
+	_stop_float(perfect_badge)
+	perfect_badge.hide()
+	perfect_badge.modulate.a = 1.0
 
 func show_slam_text(text: String, world_pos: Vector2) -> void:
 	var label := Label.new()

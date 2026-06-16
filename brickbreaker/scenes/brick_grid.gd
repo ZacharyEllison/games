@@ -1,6 +1,7 @@
 extends Node2D
 
-signal brick_destroyed(points, pos, tier)
+signal brick_scored(points, pos, tier)
+signal brick_destroyed(pos, tier)
 signal cleared
 
 const BRICK := preload("res://scenes/brick.tscn")
@@ -68,6 +69,7 @@ func build_level(level: int) -> void:
 				TOP_MARGIN + r * (BRICK_H + SPACING)
 			)
 			brick.setup(tier, stage_data)
+			brick.layer_scored.connect(_on_brick_layer_scored)
 			brick.destroyed.connect(_on_brick_destroyed)
 			_live_count += 1
 
@@ -104,9 +106,12 @@ func _stage_for_color(color: Roygb) -> Dictionary:
 		_:
 			return {"texture": _tex_blue, "modulate": Color.WHITE}
 
-func _on_brick_destroyed(points: int, pos: Vector2, tier: int) -> void:
+func _on_brick_layer_scored(points: int, pos: Vector2, tier: int) -> void:
+	brick_scored.emit(points, pos, tier)
+
+func _on_brick_destroyed(pos: Vector2, tier: int) -> void:
 	_live_count -= 1
-	brick_destroyed.emit(points, pos, tier)
+	brick_destroyed.emit(pos, tier)
 	if _live_count <= 0:
 		cleared.emit()
 

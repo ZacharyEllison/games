@@ -1,6 +1,9 @@
 extends StaticBody2D
 
-signal destroyed(points, pos, tier)
+const POINTS_PER_LAYER := 10
+
+signal layer_scored(points, pos, tier)
+signal destroyed(pos, tier)
 
 var max_hits := 1
 var hits := 0
@@ -48,6 +51,7 @@ func on_hit() -> void:
 	hits += 1
 	AudioManager.play_hit(randf_range(0.65, 1.5))
 	_jiggle()
+	layer_scored.emit(POINTS_PER_LAYER, global_position, max_hits)
 	if hits >= max_hits:
 		_break()
 	else:
@@ -58,7 +62,9 @@ func shatter() -> void:
 		return
 	AudioManager.play_hit(randf_range(0.65, 1.5))
 	_jiggle()
-	hits = max_hits
+	while hits < max_hits:
+		hits += 1
+		layer_scored.emit(POINTS_PER_LAYER, global_position, max_hits)
 	_break()
 
 func _jiggle() -> void:
@@ -87,7 +93,7 @@ func _break() -> void:
 		return
 	_broken = true
 	collision.set_deferred("disabled", true)
-	destroyed.emit(max_hits * 10, global_position, max_hits)
+	destroyed.emit(global_position, max_hits)
 	var tween := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	tween.tween_property(self, "scale", Vector2.ZERO, 0.2)
 	tween.tween_callback(queue_free)
