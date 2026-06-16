@@ -4,14 +4,16 @@ extends RefCounted
 # Measured from Kenney GLB AABB: 1 stud = 0.0795 m, origin at footprint centre.
 const STUD_PITCH := 0.0795
 
+# Stud footprint in mesh space: X = width (studs), Y = depth (studs).
+# Kenney GLBs orient 1xN bricks with the long axis along +X.
 const BRICK_STUDS := {
 	"brick_1x1":       Vector2i(1, 1),
-	"brick_1x2":       Vector2i(1, 2),
+	"brick_1x2":       Vector2i(2, 1),
 	"brick_2x2":       Vector2i(2, 2),
-	"brick_1x4":       Vector2i(1, 4),
-	"brick_2x4":       Vector2i(2, 4),
+	"brick_1x4":       Vector2i(4, 1),
+	"brick_2x4":       Vector2i(4, 2),
 	"plate_1x1":       Vector2i(1, 1),
-	"plate_1x2":       Vector2i(1, 2),
+	"plate_1x2":       Vector2i(2, 1),
 	"plate_2x2":       Vector2i(2, 2),
 	"brick_corner":    Vector2i(2, 2),
 	"brick_slope_1x2": Vector2i(2, 1),
@@ -69,7 +71,7 @@ static func rotated_studs(studs: Vector2i, steps: int) -> Vector2i:
 
 # Left-most stud column/row index for a footprint.
 static func _min_stud_index(rel: float, stud_count: int) -> int:
-	return int(round(rel - stud_count * 0.5))
+	return int(floor(rel - stud_count * 0.5 + 0.5))
 
 static func _axis_center(origin: float, min_ix: int, stud_count: int) -> float:
 	return origin + (min_ix + stud_count * 0.5) * STUD_PITCH
