@@ -56,12 +56,28 @@ static func _min_index_from_center(rel: float, stud_count: int) -> int:
 static func _axis_center(origin: float, min_ix: int, stud_count: int) -> float:
 	return origin + (min_ix + stud_count * 0.5) * BuildLayout.STUD_PITCH
 
+static func _align_min_on_run(click: int, stud_count: int, run_min: int, run_max: int) -> int:
+	var run_width := run_max - run_min + 1
+	if stud_count == run_width:
+		return run_min
+	if stud_count < run_width:
+		# Clicked stud is the anchor peg (min corner); span forward within the run.
+		return clampi(click, run_min, run_max - stud_count + 1)
+	# Footprint deeper/wider than support — align near edge on the support.
+	return run_min
+
 static func snap_xz(hit: Vector3, studs: Vector2i) -> Vector2:
 	var pitch := BuildLayout.STUD_PITCH
 	var rel_x := (hit.x - grid_origin_xz.x) / pitch
 	var rel_z := (hit.z - grid_origin_xz.y) / pitch
-	var min_ix := _min_stud_index(rel_x, studs.x)
-	var min_iz := _min_stud_index(rel_z, studs.y)
+	var click_ix := _stud_cell(rel_x)
+	var click_iz := _stud_cell(rel_z)
+
+	var run_x := BuildGrid.support_run_x(click_ix, click_iz)
+	var run_z := BuildGrid.support_run_z(click_ix, click_iz)
+	var min_ix := _align_min_on_run(click_ix, studs.x, run_x.x, run_x.y) if run_x.x >= 0 else _min_stud_index(rel_x, studs.x)
+	var min_iz := _align_min_on_run(click_iz, studs.y, run_z.x, run_z.y) if run_z.x >= 0 else _min_stud_index(rel_z, studs.y)
+
 	return Vector2(
 		_axis_center(grid_origin_xz.x, min_ix, studs.x),
 		_axis_center(grid_origin_xz.y, min_iz, studs.y)

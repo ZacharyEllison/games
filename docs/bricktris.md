@@ -65,6 +65,8 @@ When recovering cells from a placed brick center, use center-based min index (`_
 
 `BuildGrid` keeps a per-stud-column **seat Y** map. New brick bottom Y = max desk surface and seat under any footprint cell. A brick spanning columns at different heights sits level on the **taller** support (LEGO-like).
 
+When the ray hits an existing brick, **snap aligns to the support run under the click** (same seat height, contiguous studs). Equal spans share the same min stud index; narrower pieces (e.g. **2×2 on 1×4**) anchor the **clicked stud as the near peg** and span forward within the run; deeper pieces align their first row on the support row.
+
 Placement rejects footprints outside the 10×10 grid via `footprint_fits_desk()`.
 
 ### Rotation
