@@ -17,11 +17,11 @@ const DESK_HALF_EXTENT := DESK_EXTENT * 0.5
 const DESK_TOP_Y := 0.8
 const SEATED_CAM_Z := 0.3
 const DESK_NEAR_MARGIN := STUD_PITCH * 5.0
-const VR_PALETTE_GAP := STUD_PITCH * 2.5
-const VR_PALETTE_LIFT := BRICK_HEIGHT * 2.5
+const VR_PALETTE_GAP := 0.0
+const VR_PALETTE_LIFT := DESK_TOP_EPS
 
-const PALETTE_COL_SPACING := STUD_PITCH * 6.5
-const PALETTE_ROW_SPACING := STUD_PITCH * 5.25
+const PALETTE_X_SPACING := STUD_PITCH * 4.5
+const PALETTE_Z_SPACING := DESK_EXTENT / 4.0
 const PALETTE_GRAB_RADIUS := STUD_PITCH * 2.25
 const VR_GRAB_RADIUS := STUD_PITCH * 1.75
 const STUD_DOT_RADIUS := STUD_PITCH * 0.16
@@ -40,12 +40,11 @@ static func desk_position() -> Vector3:
 	var z := SEATED_CAM_Z - DESK_NEAR_MARGIN - DESK_HALF_EXTENT
 	return Vector3(0.0, DESK_TOP_Y, z)
 
-static func palette_half_width() -> float:
-	return PALETTE_COL_SPACING * 2.0
-
 static func vr_palette_position(desk_pos: Vector3) -> Vector3:
-	var x := desk_pos.x + DESK_HALF_EXTENT + VR_PALETTE_GAP + palette_half_width()
-	return Vector3(x, desk_pos.y + VR_PALETTE_LIFT, desk_pos.z)
+	# Origin at the grid's front-right corner; slots run along -Z (down the edge).
+	var x := desk_pos.x + DESK_HALF_EXTENT + VR_PALETTE_GAP
+	var z := desk_pos.z + DESK_HALF_EXTENT
+	return Vector3(x, desk_pos.y + VR_PALETTE_LIFT, z)
 
 static func grid_origin_xz(desk: Node3D) -> Vector2:
 	var half := DESK_HALF_EXTENT
@@ -56,10 +55,10 @@ static func stud_world_xz(origin: Vector2, cell: Vector2i) -> Vector2:
 	return origin + (Vector2(cell) + Vector2(0.5, 0.5)) * STUD_PITCH
 
 static func palette_col_spacing() -> float:
-	return PALETTE_COL_SPACING
+	return PALETTE_X_SPACING
 
 static func palette_row_spacing() -> float:
-	return PALETTE_ROW_SPACING
+	return PALETTE_Z_SPACING
 
 static func palette_grab_radius() -> float:
 	return PALETTE_GRAB_RADIUS

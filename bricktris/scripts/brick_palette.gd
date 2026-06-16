@@ -14,14 +14,14 @@ const BRICK_SCENES := {
 	"brick_slope_1x2": preload("res://scenes/brick_slope_1x2.tscn"),
 }
 
-# Two rows, spaced for the widest bricks (2x4 ~= 0.32 m).
+# Two rows (+X) × five slots (−Z) hugging the grid's right edge.
 const LAYOUT: Array = [
 	["brick_1x1", "brick_1x2", "brick_2x2", "brick_1x4", "brick_2x4"],
 	["plate_1x1", "plate_1x2", "plate_2x2", "brick_corner", "brick_slope_1x2"],
 ]
 
-const COL_SPACING := BuildLayout.PALETTE_COL_SPACING
-const ROW_SPACING := BuildLayout.PALETTE_ROW_SPACING
+const X_SPACING := BuildLayout.PALETTE_X_SPACING
+const Z_SPACING := BuildLayout.PALETTE_Z_SPACING
 const GRAB_RADIUS := BuildLayout.PALETTE_GRAB_RADIUS
 
 var _slots: Array = []
@@ -37,9 +37,9 @@ func _build_palette() -> void:
 		for col in cols:
 			var type: String = LAYOUT[row][col]
 			var offset := Vector3(
-				(col - (cols - 1) * 0.5) * COL_SPACING,
-				-row * ROW_SPACING,
-				0.0
+				row * X_SPACING,
+				0.0,
+				-col * Z_SPACING
 			)
 			_add_slot(type, offset)
 

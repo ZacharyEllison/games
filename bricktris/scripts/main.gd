@@ -140,10 +140,7 @@ func _layout_workspace() -> void:
 	desk.global_position = BuildLayout.desk_position()
 	GridSnapper.configure_from_desk(desk)
 	brick_palette.global_position = BuildLayout.vr_palette_position(desk.global_position)
-	var look_target := desk.global_position
-	look_target.y = brick_palette.global_position.y
-	if look_target.distance_squared_to(brick_palette.global_position) > 0.001:
-		brick_palette.look_at(look_target, Vector3.UP)
+	brick_palette.rotation = Vector3.ZERO
 
 func _reset_hand_tracking() -> void:
 	_hand_prev_pos = Vector3.ZERO
