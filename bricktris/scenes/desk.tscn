@@ -1,10 +1,10 @@
 [gd_scene load_steps=5 format=3]
 
 [sub_resource type="BoxMesh" id="BoxMesh_1"]
-size = Vector3(1.59, 0.02, 1.59)
+size = Vector3(0.795, 0.02, 0.795)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_1"]
-size = Vector3(1.59, 0.02, 1.59)
+size = Vector3(0.795, 0.02, 0.795)
 
 [sub_resource type="Shader" id="Shader_1"]
 code = "shader_type spatial;
@@ -42,7 +42,7 @@ void fragment() {
 shader = SubResource("Shader_1")
 
 [node name="Desk" type="StaticBody3D"]
-position = Vector3(0, 0.8, -0.8)
+position = Vector3(0, 0.8, -0.5)
 collision_layer = 1
 collision_mask = 0
 

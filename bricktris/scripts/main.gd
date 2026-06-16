@@ -14,9 +14,6 @@ var _grabbed_type := ""
 var _held_rot_steps := 0
 var _rotated_this_flick := false
 
-var _desktop_type := "brick_1x1"
-var _desktop_ghost: Brick = null
-var _desktop_ghost_rot := 0.0
 var _placed_bricks: Array = []
 
 const RAY_MASK := 3  # desk (1) + placed bricks (2)
@@ -43,6 +40,7 @@ var _cam_preset := DesktopCamera.Preset.ORBIT
 var _cam_orbit_drag := false
 
 @onready var right_hand: XRController3D = $XROrigin3D/RightHand
+@onready var right_hand_mesh: MeshInstance3D = $XROrigin3D/RightHand/RightHandMesh
 @onready var cam: XRCamera3D = $XROrigin3D/XRCamera3D
 @onready var xr_origin: XROrigin3D = $XROrigin3D
 @onready var bricks_container: Node3D = $Bricks
@@ -53,7 +51,7 @@ var _cam_orbit_drag := false
 @onready var sun: DirectionalLight3D = $DirectionalLight3D
 
 func _ready() -> void:
-	GridSnapper.configure_from_desk(desk)
+	_layout_workspace()
 	_configure_scene_lighting()
 	var env := world_env.environment
 	_saved_bg_mode = env.background_mode
@@ -62,8 +60,9 @@ func _ready() -> void:
 	right_hand.button_released.connect(_on_right_button_released)
 	hud.reset_requested.connect(_on_reset)
 	hud.enter_vr_requested.connect(_on_enter_vr)
-	hud.brick_type_selected.connect(_on_desktop_type_changed)
 	hud.view_preset_selected.connect(_on_desktop_view_preset)
+	_set_hand_mesh_visible(false)
+	brick_palette.show()
 	_init_desktop_camera()
 	_init_webxr()
 
@@ -71,7 +70,6 @@ func _init_webxr() -> void:
 	webxr_interface = XRServer.find_interface("WebXR") as WebXRInterface
 	if not webxr_interface:
 		hud.set_vr_status("desktop")
-		brick_palette.hide()
 		return
 	webxr_interface.session_supported.connect(_webxr_session_supported)
 	webxr_interface.session_started.connect(_webxr_session_started)
@@ -92,7 +90,6 @@ func _webxr_session_supported(session_mode: String, supported: bool) -> void:
 		hud.set_vr_status("supported")
 	else:
 		hud.set_vr_status("desktop")
-		brick_palette.hide()
 
 func _on_enter_vr() -> void:
 	if not webxr_interface:
@@ -114,16 +111,16 @@ func _webxr_session_started() -> void:
 	_in_vr = true
 	_reset_hand_tracking()
 	DesktopCamera.reset_rig(xr_origin, cam)
+	_layout_workspace()
 	_use_passthrough = webxr_interface.session_mode == "immersive-ar"
 	_set_passthrough(_use_passthrough)
+	_set_hand_mesh_visible(true)
 	brick_palette.show()
 	get_viewport().use_xr = true
 	hud.on_xr_started()
-	_kill_desktop_ghost()
 	webxr_interface.squeezestart.connect(_on_squeeze_start)
 	webxr_interface.squeezeend.connect(_on_squeeze_end)
 	webxr_interface.visibility_state_changed.connect(_on_visibility_changed)
-	_place_palette_in_front.call_deferred()
 
 func _set_passthrough(on: bool) -> void:
 	var env := world_env.environment
@@ -136,27 +133,14 @@ func _set_passthrough(on: bool) -> void:
 		env.background_mode = _saved_bg_mode
 		env.background_color = _saved_bg_color
 
-func _place_palette_in_front() -> void:
-	var desk_center := desk.global_position
-	var half := BuildLayout.desk_half_extent()
-	var forward_xz := -cam.global_transform.basis.z
-	forward_xz.y = 0.0
-	if forward_xz.length_squared() < 0.001:
-		forward_xz = Vector3(0, 0, -1)
-	forward_xz = forward_xz.normalized()
-	var left_xz := -cam.global_transform.basis.x
-	left_xz.y = 0.0
-	if left_xz.length_squared() < 0.001:
-		left_xz = Vector3(-1, 0, 0)
-	left_xz = left_xz.normalized()
-	var toward_user := -forward_xz
-	brick_palette.global_position = (
-		desk_center
-		+ left_xz * (half + BuildLayout.STUD_PITCH * 2.0)
-		+ toward_user * (half * 0.5)
-		+ Vector3(0, BuildLayout.BRICK_HEIGHT * 3.0, 0)
-	)
-	var look_target := cam.global_position
+func _set_hand_mesh_visible(visible: bool) -> void:
+	right_hand_mesh.visible = visible
+
+func _layout_workspace() -> void:
+	desk.global_position = BuildLayout.desk_position()
+	GridSnapper.configure_from_desk(desk)
+	brick_palette.global_position = BuildLayout.vr_palette_position(desk.global_position)
+	var look_target := desk.global_position
 	look_target.y = brick_palette.global_position.y
 	if look_target.distance_squared_to(brick_palette.global_position) > 0.001:
 		brick_palette.look_at(look_target, Vector3.UP)
@@ -183,6 +167,7 @@ func _configure_scene_lighting() -> void:
 
 func _webxr_session_ended() -> void:
 	_in_vr = false
+	_set_hand_mesh_visible(false)
 	_set_passthrough(false)
 	get_viewport().use_xr = false
 	hud.on_xr_ended()
@@ -264,7 +249,8 @@ func _vr_release_brick() -> void:
 	if throw_speed >= THROW_SPEED_THRESHOLD:
 		_throw_held(_release_velocity(), _release_angular_velocity())
 		return
-	var hit := _raycast_surface(right_hand.global_position, -right_hand.global_transform.basis.y)
+	var drop_dir := Vector3.DOWN if not _in_vr else -right_hand.global_transform.basis.y
+	var hit := _raycast_surface(right_hand.global_position, drop_dir)
 	if hit == Vector3.INF:
 		hit = right_hand.global_position
 	var rot_y := _held_rot_y()
@@ -306,28 +292,30 @@ func _process(_delta: float) -> void:
 	if _in_vr:
 		_process_vr(_delta)
 	else:
-		_process_desktop()
+		_process_desktop(_delta)
 
 func _physics_process(delta: float) -> void:
-	if not _in_vr:
-		return
 	_update_thrown_bricks(delta)
 
-func _process_vr(delta: float) -> void:
-	var hand_pos := right_hand.global_position
-	var hand_basis := right_hand.global_transform.basis
+func _track_hand_motion(hand_pos: Vector3, delta: float, hand_basis: Basis) -> void:
 	if _hand_prev_pos != Vector3.ZERO:
 		var sample := (hand_pos - _hand_prev_pos) / maxf(delta, 0.001)
 		_hand_velocity = sample
 		_vel_samples.append(sample)
 		while _vel_samples.size() > VELOCITY_SAMPLES:
 			_vel_samples.pop_front()
-	if _hand_prev_basis != Basis.IDENTITY:
+	if hand_basis != Basis.IDENTITY and _hand_prev_basis != Basis.IDENTITY:
 		var delta_basis := _hand_prev_basis.inverse() * hand_basis
 		var euler := delta_basis.get_euler()
 		_hand_angular_velocity = euler / maxf(delta, 0.001)
 	_hand_prev_pos = hand_pos
-	_hand_prev_basis = hand_basis
+	if hand_basis != Basis.IDENTITY:
+		_hand_prev_basis = hand_basis
+
+func _process_vr(delta: float) -> void:
+	var hand_pos := right_hand.global_position
+	var hand_basis := right_hand.global_transform.basis
+	_track_hand_motion(hand_pos, delta, hand_basis)
 
 	if held_brick:
 		held_brick.global_position = hand_pos
@@ -362,8 +350,18 @@ func _update_thrown_bricks(delta: float) -> void:
 	for brick in to_despawn:
 		_despawn_thrown(brick)
 
-func _process_desktop() -> void:
-	_update_desktop_ghost()
+func _process_desktop(delta: float) -> void:
+	var mouse := get_viewport().get_mouse_position()
+	var over_ui := hud.is_pointer_over_ui(mouse)
+	if not over_ui or held_brick:
+		var hand_pos := _desktop_hand_pos()
+		right_hand.global_position = hand_pos
+		_track_hand_motion(hand_pos, delta, Basis.IDENTITY)
+		if held_brick:
+			held_brick.global_position = hand_pos
+			held_brick.rotation = Vector3(0, _held_rot_y(), 0)
+		elif not over_ui:
+			brick_palette.update_highlight(hand_pos)
 	if _cam_orbit_drag:
 		var vel := Input.get_last_mouse_velocity() * 0.003
 		_cam_yaw -= vel.x
@@ -373,6 +371,8 @@ func _process_desktop() -> void:
 		_apply_desktop_camera()
 
 func _init_desktop_camera() -> void:
+	_set_hand_mesh_visible(false)
+	_reset_hand_tracking()
 	xr_origin.global_position = Vector3.ZERO
 	xr_origin.global_rotation = Vector3.ZERO
 	_apply_desktop_view_preset(DesktopCamera.Preset.ORBIT)
@@ -401,9 +401,20 @@ func _zoom_desktop_camera(delta: float) -> void:
 		_cam_dist = clampf(_cam_dist + delta, DesktopCamera.MIN_DISTANCE, DesktopCamera.MAX_DISTANCE)
 	_apply_desktop_camera()
 
-func _on_desktop_type_changed(type: String) -> void:
-	_desktop_type = type
-	_kill_desktop_ghost()
+func _desktop_hand_pos() -> Vector3:
+	var mouse := get_viewport().get_mouse_position()
+	var origin := cam.project_ray_origin(mouse)
+	var dir := cam.project_ray_normal(mouse)
+	var lift := BuildLayout.BRICK_HEIGHT * 0.75
+	var hit := _raycast_surface(origin, dir)
+	if hit != Vector3.INF:
+		return hit + Vector3(0, lift, 0)
+	var hand_y := desk.global_position.y + BuildLayout.VR_PALETTE_LIFT
+	if absf(dir.y) > 0.0001:
+		var t := (hand_y - origin.y) / dir.y
+		if t > 0.05:
+			return origin + dir * t
+	return origin + dir * 0.55
 
 # Raycast against desk + placed bricks so stacking targets the surface under the cursor.
 func _raycast_surface(from: Vector3, dir: Vector3) -> Vector3:
@@ -423,56 +434,12 @@ func _raycast_surface(from: Vector3, dir: Vector3) -> Vector3:
 		return Vector3.INF
 	return from + dir * t
 
-func _pointer_hit() -> Vector3:
-	var mouse := get_viewport().get_mouse_position()
-	var origin := cam.project_ray_origin(mouse)
-	var dir := cam.project_ray_normal(mouse)
-	return _raycast_surface(origin, dir)
-
-func _update_desktop_ghost() -> void:
-	var mouse := get_viewport().get_mouse_position()
-	if hud.is_pointer_over_ui(mouse):
-		if _desktop_ghost:
-			_desktop_ghost.visible = false
-		return
-
-	var hit := _pointer_hit()
-	if hit == Vector3.INF:
-		if _desktop_ghost:
-			_desktop_ghost.visible = false
-		return
-
-	var p: Dictionary = BuildGrid.placement(_desktop_type, hit, deg_to_rad(_desktop_ghost_rot))
-	if p.is_empty():
-		if _desktop_ghost:
-			_desktop_ghost.visible = false
-		return
-
-	if not _desktop_ghost:
-		var scene := BrickPalette.BRICK_SCENES.get(_desktop_type) as PackedScene
-		if not scene:
-			return
-		_desktop_ghost = scene.instantiate()
-		bricks_container.add_child(_desktop_ghost)
-		(_desktop_ghost as Brick).set_ghost(true)
-
-	_desktop_ghost.visible = true
-	_desktop_ghost.global_position = p["position"]
-	_desktop_ghost.rotation.y = p["rot_y"]
-
-func _kill_desktop_ghost() -> void:
-	if _desktop_ghost:
-		_desktop_ghost.queue_free()
-		_desktop_ghost = null
-
 func _input(event: InputEvent) -> void:
 	if _in_vr:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_R:
-			_desktop_ghost_rot = fmod(_desktop_ghost_rot + 90.0, 360.0)
-			if _desktop_ghost:
-				_desktop_ghost.rotation.y = deg_to_rad(_desktop_ghost_rot)
+		if event.keycode == KEY_R and held_brick:
+			_held_rot_steps = (_held_rot_steps + 1) % 4
 		elif event.keycode == KEY_Z and (event.ctrl_pressed or event.meta_pressed):
 			_desktop_undo()
 
@@ -480,8 +447,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _in_vr:
 		return
 	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			_desktop_place()
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if hud.is_pointer_over_ui(get_viewport().get_mouse_position()):
+				return
+			if event.pressed:
+				_try_grab()
+			else:
+				_vr_release_brick()
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			_cam_orbit_drag = event.pressed
 		elif event.pressed:
@@ -490,23 +462,6 @@ func _unhandled_input(event: InputEvent) -> void:
 					_zoom_desktop_camera(-BuildLayout.STUD_PITCH * 0.75)
 				MOUSE_BUTTON_WHEEL_DOWN:
 					_zoom_desktop_camera(BuildLayout.STUD_PITCH * 0.75)
-
-func _desktop_place() -> void:
-	if hud.is_pointer_over_ui(get_viewport().get_mouse_position()):
-		return
-	var hit := _pointer_hit()
-	if hit == Vector3.INF:
-		return
-	var p: Dictionary = BuildGrid.placement(_desktop_type, hit, deg_to_rad(_desktop_ghost_rot))
-	if p.is_empty():
-		return
-	var scene := BrickPalette.BRICK_SCENES.get(_desktop_type) as PackedScene
-	if not scene:
-		return
-	var brick: Brick = scene.instantiate()
-	bricks_container.add_child(brick)
-	brick.set_ghost(true)
-	_finalize_placement(brick, _desktop_type, p["rot_y"], p)
 
 func _finalize_placement(brick: Brick, type: String, rot_y: float, preset: Dictionary = {}) -> void:
 	var p: Dictionary = preset if not preset.is_empty() else BuildGrid.placement(type, brick.global_position, rot_y)
@@ -538,7 +493,6 @@ func _rebuild_grid() -> void:
 	BuildGrid.rebuild(records)
 
 func _on_reset() -> void:
-	_kill_desktop_ghost()
 	if held_brick:
 		held_brick.queue_free()
 		held_brick = null
