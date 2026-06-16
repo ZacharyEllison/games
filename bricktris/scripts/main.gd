@@ -11,6 +11,7 @@ var _use_passthrough := false
 
 var held_brick: Node3D = null
 var _grabbed_type := ""
+var _held_rot_steps := 0
 var _rotated_this_flick := false
 
 var _desktop_type := "brick_1x1"
@@ -232,10 +233,12 @@ func _spawn_from_palette(type: String) -> void:
 		return
 	held_brick = scene.instantiate()
 	bricks_container.add_child(held_brick)
+	_held_rot_steps = 0
 	(held_brick as Brick).set_held(true)
 
 func _grab_placed_brick(brick: Brick) -> void:
 	_grabbed_type = brick.brick_type
+	_held_rot_steps = brick.rot_steps
 	held_brick = brick
 	_placed_bricks.erase(brick)
 	_rebuild_grid()
@@ -264,12 +267,16 @@ func _vr_release_brick() -> void:
 	var hit := _raycast_surface(right_hand.global_position, -right_hand.global_transform.basis.y)
 	if hit == Vector3.INF:
 		hit = right_hand.global_position
-	var p: Dictionary = BuildGrid.placement(_grabbed_type, hit, held_brick.rotation.y)
+	var rot_y := _held_rot_y()
+	var p: Dictionary = BuildGrid.placement(_grabbed_type, hit, rot_y)
 	if p.is_empty():
 		held_brick = null
 		return
-	_finalize_placement(held_brick as Brick, _grabbed_type, held_brick.rotation.y, p)
+	_finalize_placement(held_brick as Brick, _grabbed_type, rot_y, p)
 	held_brick = null
+
+func _held_rot_y() -> float:
+	return float(_held_rot_steps) * (PI * 0.5)
 
 func _release_velocity() -> Vector3:
 	if _vel_samples.is_empty():
@@ -324,10 +331,10 @@ func _process_vr(delta: float) -> void:
 
 	if held_brick:
 		held_brick.global_position = hand_pos
-		held_brick.global_rotation = right_hand.global_rotation
+		held_brick.rotation = Vector3(0, _held_rot_y(), 0)
 		var axes := right_hand.get_vector2("primary")
 		if axes.x > 0.7 and not _rotated_this_flick:
-			held_brick.rotate_y(deg_to_rad(90.0))
+			_held_rot_steps = (_held_rot_steps + 1) % 4
 			_rotated_this_flick = true
 		elif abs(axes.x) < 0.3:
 			_rotated_this_flick = false

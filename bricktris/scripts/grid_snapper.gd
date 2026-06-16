@@ -32,7 +32,8 @@ static func seat_surface_y(type: String, bottom_y: float) -> float:
 	return bottom_y + seat_offset(type)
 
 static func rot_steps_from_y(rot_y: float) -> int:
-	return int(round(rot_y / (PI * 0.5))) % 4
+	var steps := int(round(rot_y / (PI * 0.5)))
+	return ((steps % 4) + 4) % 4
 
 static func rotated_studs(studs: Vector2i, steps: int) -> Vector2i:
 	if steps % 2 == 1:

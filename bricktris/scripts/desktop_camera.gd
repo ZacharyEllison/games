@@ -23,7 +23,14 @@ static func preset(p: Preset) -> Dictionary:
 		Preset.TOP:
 			return {"yaw": 0.0, "pitch": 1.52, "dist": ORBIT_DISTANCE * 1.1, "ortho": false}
 		Preset.ORTHO:
-			return {"yaw": 0.0, "pitch": 1.55, "dist": ORBIT_DISTANCE, "ortho": true, "ortho_size": ORTHO_SIZE}
+			# Corner-down orthographic (two sides + plan), not straight top-down.
+			return {
+				"yaw": PI * 0.25,
+				"pitch": 0.82,
+				"dist": ORBIT_DISTANCE,
+				"ortho": true,
+				"ortho_size": ORTHO_SIZE * 1.35,
+			}
 		Preset.LEFT:
 			return {"yaw": -PI * 0.5, "pitch": 0.35, "dist": ORBIT_DISTANCE, "ortho": false}
 		Preset.RIGHT:
