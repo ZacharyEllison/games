@@ -50,8 +50,6 @@ func _add_slot(type: String, offset: Vector3) -> void:
 	brick.freeze = true
 	brick.collision_layer = 0
 	brick.collision_mask = 0
-	# Palette display scale — same as play scale so what you see is what you get
-	brick.scale = Vector3.ONE * GridSnapper.BRICK_SCALE
 	container.add_child(brick)
 
 	_slots.append({ "type": type, "brick": brick, "container": container })

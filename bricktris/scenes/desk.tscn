@@ -10,16 +10,27 @@ size = Vector3(1.6, 0.02, 1.6)
 code = "shader_type spatial;
 uniform vec4 bg_color : source_color = vec4(0.15, 0.17, 0.22, 1.0);
 uniform vec4 line_color : source_color = vec4(0.32, 0.36, 0.46, 1.0);
-uniform float cell_size = 0.08;
-uniform float line_width = 0.004;
+uniform vec4 stud_color : source_color = vec4(0.4, 0.44, 0.54, 1.0);
+uniform vec2 grid_origin = vec2(0.0, -0.8);
+uniform float cell_size = 0.0795;
+uniform float line_width = 0.003;
+uniform float stud_radius = 0.011;
+varying vec3 world_pos;
+void vertex() {
+	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
 void fragment() {
-	vec3 wp = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	vec2 g = fract(wp.xz / cell_size);
+	vec2 f = fract((world_pos.xz - grid_origin) / cell_size);
 	float lw = line_width / cell_size;
-	float lx = step(1.0 - lw, g.x) + step(g.x, lw);
-	float lz = step(1.0 - lw, g.y) + step(g.y, lw);
-	float on_line = clamp(lx + lz, 0.0, 1.0);
-	ALBEDO = mix(bg_color.rgb, line_color.rgb, on_line);
+	float on_line = clamp(
+		step(1.0 - lw, f.x) + step(f.x, lw) +
+		step(1.0 - lw, f.y) + step(f.y, lw),
+		0.0, 1.0);
+	vec2 d = f - 0.5;
+	float on_stud = step(length(d), stud_radius / cell_size);
+	vec3 col = mix(bg_color.rgb, line_color.rgb, on_line);
+	col = mix(col, stud_color.rgb, on_stud * (1.0 - on_line));
+	ALBEDO = col;
 	ROUGHNESS = 0.9;
 	SPECULAR = 0.1;
 }"
