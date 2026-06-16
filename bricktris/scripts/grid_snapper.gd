@@ -3,8 +3,8 @@ extends RefCounted
 
 # Kenney bricks are ~1 Godot unit per stud at native scale.
 # We scale all bricks by BRICK_SCALE so 1 stud = 0.04m (4cm) in VR.
-const BRICK_SCALE := 0.04
-const CELL_SIZE := 0.04  # world-space size of one stud after scaling
+const BRICK_SCALE := 0.08
+const CELL_SIZE := 0.08  # world-space size of one stud after scaling (8cm per stud)
 
 const BRICK_DEFS := {
 	"brick_1x1":       Vector3(1, 1, 1),
@@ -20,7 +20,7 @@ const BRICK_DEFS := {
 }
 
 # Desk surface y-position (top of the baseplate)
-const DESK_Y := 0.82
+const DESK_Y := 0.81  # desk at y=0.8, surface at y=0.81
 
 # Snap a world position to the nearest grid cell on the baseplate.
 static func snap(world_pos: Vector3, dims: Vector3) -> Vector3:

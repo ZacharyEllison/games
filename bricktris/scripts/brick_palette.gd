@@ -19,8 +19,8 @@ const LAYOUT: Array = [
 	["plate_1x1", "plate_1x2", "plate_2x2", "brick_corner", "brick_slope_1x2"],
 ]
 
-const SLOT_SPACING := 0.10  # 10cm between palette slots
-const GRAB_RADIUS := 0.08   # 8cm reach to grab
+const SLOT_SPACING := 0.18  # 18cm between palette slots
+const GRAB_RADIUS := 0.12   # 12cm reach to grab
 
 var _slots: Array = []
 var _highlighted_type := ""
