@@ -1,1 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect width="124" height="124" x="2" y="2" fill="#363d52" stroke="#212532" stroke-width="4" rx="14"/><rect x="20" y="46" width="88" height="40" rx="6" fill="#bf616a"/><circle cx="44" cy="62" r="13" fill="#fff" stroke="#212532" stroke-width="2"/><circle cx="84" cy="62" r="13" fill="#fff" stroke="#212532" stroke-width="2"/><circle cx="47" cy="66" r="6" fill="#212532"/><circle cx="81" cy="58" r="6" fill="#212532"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="124" height="124" x="2" y="2" fill="#363d52" stroke="#212532" stroke-width="4" rx="14"/>
+  <g transform="translate(64 68)">
+    <!-- Right face (x = +1) -->
+    <path fill="#2563eb" d="M42 -23 L42 -7 L-14 21 L-14 5 Z"/>
+    <!-- Front face (z = +2) -->
+    <path fill="#1d4ed8" d="M-14 5 L-14 21 L-42 7 L-42 -9 Z"/>
+    <!-- Top face -->
+    <path fill="#60a5fa" d="M14 -37 L42 -23 L-14 5 L-42 -9 Z"/>
+    <!-- Top highlight edge -->
+    <path fill="none" stroke="#93c5fd" stroke-width="1.25" stroke-linejoin="round" d="M14 -37 L42 -23 L-14 5"/>
+    <!-- Brick outline -->
+    <path fill="none" stroke="#1e3a8a" stroke-width="1.5" stroke-linejoin="round" d="M14 -37 L42 -23 L42 -7 L-14 21 L-42 7 L-42 -9 Z"/>
+    <!-- Studs: 2×4 grid -->
+    <g fill="#93c5fd" stroke="#1e40af" stroke-width="0.85">
+      <circle cx="14" cy="-31.3" r="4.2"/>
+      <circle cx="28" cy="-24.3" r="4.2"/>
+      <circle cx="0" cy="-24.3" r="4.2"/>
+      <circle cx="14" cy="-17.3" r="4.2"/>
+      <circle cx="-14" cy="-17.3" r="4.2"/>
+      <circle cx="0" cy="-10.3" r="4.2"/>
+      <circle cx="-28" cy="-10.3" r="4.2"/>
+      <circle cx="-14" cy="-3.7" r="4.2"/>
+    </g>
+    <!-- Stud highlights -->
+    <g fill="#dbeafe" opacity="0.85">
+      <circle cx="13" cy="-32.2" r="1.4"/>
+      <circle cx="27" cy="-25.2" r="1.4"/>
+      <circle cx="-1" cy="-25.2" r="1.4"/>
+      <circle cx="13" cy="-18.2" r="1.4"/>
+      <circle cx="-15" cy="-18.2" r="1.4"/>
+      <circle cx="-1" cy="-11.2" r="1.4"/>
+      <circle cx="-29" cy="-11.2" r="1.4"/>
+      <circle cx="-15" cy="-4.6" r="1.4"/>
+    </g>
+  </g>
+</svg>
