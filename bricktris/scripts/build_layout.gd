@@ -27,6 +27,7 @@ const PALETTE_GRAB_RADIUS := STUD_PITCH * 2.25
 const VR_GRAB_RADIUS := STUD_PITCH * 1.75
 const STUD_DOT_RADIUS := STUD_PITCH * 0.16
 const THROW_SPEED_THRESHOLD := STUD_PITCH * 7.0
+const THROW_DESPAWN_SECONDS := 3.0
 
 static func desk_extent() -> float:
 	return DESK_EXTENT

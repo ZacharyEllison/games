@@ -21,7 +21,7 @@ const GRAB_RADIUS := BuildLayout.VR_GRAB_RADIUS
 const THROW_SPEED_THRESHOLD := BuildLayout.THROW_SPEED_THRESHOLD
 const THROW_VELOCITY_SCALE := 1.45
 const THROW_ANGULAR_SCALE := 0.9
-const THROW_MAX_AGE := 4.0
+const THROW_DESPAWN_SECONDS := BuildLayout.THROW_DESPAWN_SECONDS
 const VELOCITY_SAMPLES := 4
 
 var _hand_prev_pos := Vector3.ZERO
@@ -348,22 +348,13 @@ func _process_vr(delta: float) -> void:
 		brick_palette.update_highlight(hand_pos)
 
 func _update_thrown_bricks(delta: float) -> void:
-	var desk_center := desk.global_position
-	var half := BuildLayout.desk_half_extent()
-	var margin := BuildLayout.STUD_PITCH * 2.0
 	var to_despawn: Array[Brick] = []
 	for brick in _thrown_bricks:
 		if not is_instance_valid(brick):
 			to_despawn.append(brick)
 			continue
 		brick.tick_throw(delta)
-		var pos := brick.global_position
-		var off_desk := (
-			absf(pos.x - desk_center.x) > half + margin
-			or absf(pos.z - desk_center.z) > half + margin
-			or pos.y < desk_center.y - BuildLayout.BRICK_HEIGHT * 2.0
-		)
-		if off_desk or brick.throw_age >= THROW_MAX_AGE:
+		if brick.throw_age >= THROW_DESPAWN_SECONDS:
 			to_despawn.append(brick)
 	for brick in to_despawn:
 		_despawn_thrown(brick)
