@@ -88,7 +88,7 @@ static func _min_index_from_center(rel: float, stud_count: int) -> int:
 static func _axis_center(origin: float, min_ix: int, stud_count: int) -> float:
 	return origin + (min_ix + stud_count * 0.5) * BuildLayout.STUD_PITCH
 
-static func snap_xz(hit: Vector3, studs: Vector2i) -> Vector2:
+static func snap_xz(hit: Vector3, studs: Vector2i) -> Dictionary:
 	var pitch := BuildLayout.STUD_PITCH
 	var rel_x := (hit.x - grid_origin_xz.x) / pitch
 	var rel_z := (hit.z - grid_origin_xz.y) / pitch
@@ -100,10 +100,13 @@ static func snap_xz(hit: Vector3, studs: Vector2i) -> Vector2:
 	var min_ix := _peg_connect_min_index(rel_x, studs.x, run_x.x, run_x.y) if run_x.x >= 0 else _min_stud_index(rel_x, studs.x)
 	var min_iz := _peg_connect_min_index(rel_z, studs.y, run_z.x, run_z.y) if run_z.x >= 0 else _min_stud_index(rel_z, studs.y)
 
-	return Vector2(
-		_axis_center(grid_origin_xz.x, min_ix, studs.x),
-		_axis_center(grid_origin_xz.y, min_iz, studs.y)
-	)
+	return {
+		"position": Vector2(
+			_axis_center(grid_origin_xz.x, min_ix, studs.x),
+			_axis_center(grid_origin_xz.y, min_iz, studs.y)
+		),
+		"min_indices": Vector2i(min_ix, min_iz),
+	}
 
 static func footprint_indices(center_xz: Vector2, studs: Vector2i) -> Array[Vector2i]:
 	var pitch := BuildLayout.STUD_PITCH
@@ -123,6 +126,23 @@ static func footprint_fits_desk(center_xz: Vector2, studs: Vector2i) -> bool:
 			return false
 		if cell.x >= BuildLayout.DESK_STUDS or cell.y >= BuildLayout.DESK_STUDS:
 			return false
+	return true
+static func footprint_indices_from_min(min_ix: int, min_iz: int, studs: Vector2i) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	for ix in studs.x:
+		for iz in studs.y:
+			cells.append(Vector2i(min_ix + ix, min_iz + iz))
+	return cells
+
+static func footprint_fits_desk_from_min(min_ix: int, min_iz: int, studs: Vector2i) -> bool:
+	for ix in studs.x:
+		for iz in studs.y:
+			var cell_x := min_ix + ix
+			var cell_z := min_iz + iz
+			if cell_x < 0 or cell_z < 0:
+				return false
+			if cell_x >= BuildLayout.DESK_STUDS or cell_z >= BuildLayout.DESK_STUDS:
+				return false
 	return true
 
 static func snap_rotation(rot_y: float) -> float:

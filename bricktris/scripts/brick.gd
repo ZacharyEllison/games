@@ -4,6 +4,7 @@ extends RigidBody3D
 var brick_type := ""
 var rot_steps := 0
 var is_thrown := false
+var _min_indices := Vector2i.ZERO
 var throw_age := 0.0
 
 var _ghost_mat: StandardMaterial3D
@@ -48,9 +49,10 @@ func tick_throw(delta: float) -> void:
 	if is_thrown:
 		throw_age += delta
 
-func set_placed(type: String, steps: int) -> void:
+func set_placed(type: String, steps: int, min_indices: Vector2i = Vector2i.ZERO) -> void:
 	brick_type = type
 	rot_steps = steps
+	_min_indices = min_indices
 
 func set_highlighted(on: bool) -> void:
 	if on:
@@ -87,4 +89,5 @@ func get_placement_record() -> Dictionary:
 		"type": brick_type,
 		"position": global_position,
 		"rot_steps": rot_steps,
+		"min_indices": _min_indices,
 	}

@@ -395,7 +395,7 @@ func _process_vr(delta: float) -> void:
 	if held_brick:
 		held_brick.global_position = hand_pos
 		held_brick.rotation = Vector3(0, _held_rot_y(), 0)
-		var axes := hand.get_vector2("primary")
+		var axes := hand.get_vector2("stick")
 		if not _rotated_this_flick:
 			if axes.x > 0.7:
 				_held_rot_steps = (_held_rot_steps + 1) % 4
@@ -554,9 +554,9 @@ func _finalize_placement(brick: Brick, type: String, rot_y: float, preset: Dicti
 		return
 	brick.global_position = p["position"]
 	brick.rotation = Vector3(0, p["rot_y"], 0)
-	brick.set_placed(type, p["rot_steps"])
+	brick.set_placed(type, p["rot_steps"], p.get("min_indices", Vector2i.ZERO))
 	brick.set_ghost(false)
-	BuildGrid.register_placed(type, p["position"], p["rot_steps"])
+	BuildGrid.register_placed(type, p["position"], p["rot_steps"], p.get("min_indices", Vector2i.ZERO))
 	_placed_bricks.append(brick)
 	held_brick = null
 	_clear_placement_preview()
