@@ -333,6 +333,23 @@ func _clear_placement_preview() -> void:
 	if _placement_preview:
 		_placement_preview.clear()
 
+
+# Updates placement preview for VR using straight-down raycast from active hand.
+func _update_vr_placement_preview() -> void:
+	if not _placement_preview or held_brick == null or _active_hand == null:
+		return
+	var type := _grabbed_type
+	if type.is_empty():
+		_clear_placement_preview()
+		return
+
+	# Straight-down raycast (same as desktop, NOT hand basis y).
+	var from_pos := _vr_hand().global_position
+	var hit: Vector3 = _raycast_surface(from_pos, Vector3.DOWN)
+	if hit == Vector3.INF or _held_rot_steps < 0:
+		_clear_placement_preview()
+		return
+
 func _held_rot_y() -> float:
 	return float(_held_rot_steps) * (PI * 0.5)
 
@@ -395,6 +412,7 @@ func _process_vr(delta: float) -> void:
 	if held_brick:
 		held_brick.global_position = hand_pos
 		held_brick.rotation = Vector3(0, _held_rot_y(), 0)
+		_update_vr_placement_preview()
 		var axes := hand.get_vector2("stick")
 		if not _rotated_this_flick:
 			if axes.x > 0.7:
