@@ -64,7 +64,6 @@ func _new_game() -> void:
 	_level_points = 0
 	hud.set_score(score)
 	hud.set_lives(lives)
-	hud.hide_message()
 	hud.hide_game_over()
 	hud.hide_victory()
 	hud.set_pause_menu_visible(false, max_unlocked_level)
@@ -97,6 +96,11 @@ func _spawn_held_ball() -> void:
 	held_ball.active = false
 
 func _unhandled_input(event: InputEvent) -> void:
+	if state == State.GAME_OVER or state == State.VICTORY:
+		if event is InputEventKey and event.keycode == KEY_SPACE:
+			AudioManager.unlock()
+			_new_game()
+		return
 	if event.is_action_pressed("pause"):
 		if state == State.PLAYING or state == State.IDLE:
 			_pause_game()
@@ -115,10 +119,6 @@ func _process(_delta: float) -> void:
 			held_ball = null
 			state = State.PLAYING
 			hud.hide_tap_prompt()
-	elif state == State.GAME_OVER or state == State.VICTORY:
-		if Input.is_action_just_pressed("press"):
-			AudioManager.unlock()
-			_new_game()
 	elif state == State.LEVEL_CLEAR:
 		if Input.is_action_just_pressed("press"):
 			AudioManager.unlock()
@@ -240,9 +240,8 @@ func _on_level_cleared() -> void:
 	if was_perfect:
 		hud.show_tap_prompt("TAP TO CONTINUE")
 		return
-	hud.show_message("LEVEL %d" % (level + 1))
-	await get_tree().create_timer(1.2).timeout
-	hud.hide_message()
+	hud.show_level_transition("LEVEL %d" % (level + 1))
+	await get_tree().create_timer(1.4).timeout
 	level += 1
 	_start_level()
 
@@ -287,7 +286,6 @@ func _on_level_selected(selected_level: int) -> void:
 	level = selected_level
 	_lives_lost_this_level = 0
 	_level_points = 0
-	hud.hide_message()
 	hud.hide_game_over()
 	hud.hide_victory()
 	_start_level()
