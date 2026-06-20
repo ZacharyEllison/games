@@ -67,6 +67,7 @@ func _physics_process(delta: float) -> void:
 	_check_bottom_out()
 
 func _handle_paddle_hit(collider: Node, _normal: Vector2, approach_dir: Vector2) -> void:
+	AudioManager.play_paddle_hit()
 	var half_h: float = collider.half_height() if collider.has_method("half_height") else 11.0
 	# Only when the ball has slipped under the paddle (not side or top hits).
 	var paddle_bottom: float = collider.global_position.y + half_h

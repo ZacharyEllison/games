@@ -36,3 +36,12 @@ func play_hit(pitch_scale: float = 1.0) -> void:
 	player.pitch_scale = pitch_scale
 	player.stop()
 	player.play()
+
+func play_paddle_hit() -> void:
+	if not _unlocked:
+		unlock()
+	var player := _players[_next_index]
+	_next_index = (_next_index + 1) % POOL_SIZE
+	player.volume_db = -12.0
+	player.stop()
+	player.play()
