@@ -65,6 +65,7 @@ func _new_game() -> void:
 	hud.set_score(score)
 	hud.set_lives(lives)
 	hud.hide_game_over()
+	hud.hide_perfect()
 	hud.hide_victory()
 	hud.set_pause_menu_visible(false, max_unlocked_level)
 	_start_level()
@@ -270,6 +271,7 @@ func _on_level_selected(selected_level: int) -> void:
 	_lives_lost_this_level = 0
 	_level_points = 0
 	hud.hide_game_over()
+	hud.hide_perfect()
 	hud.hide_victory()
 	_start_level()
 
