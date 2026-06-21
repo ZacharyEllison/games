@@ -80,7 +80,6 @@ func _start_level() -> void:
 	_level_points = 0
 	_spawn_held_ball()
 	state = State.IDLE
-	hud.show_tap_prompt()
 
 func _make_ball(kind: int, speed_scale: float = 1.0) -> CharacterBody2D:
 	var ball: CharacterBody2D = BALL.instantiate()
@@ -96,11 +95,6 @@ func _spawn_held_ball() -> void:
 	held_ball.active = false
 
 func _unhandled_input(event: InputEvent) -> void:
-	if state == State.GAME_OVER or state == State.VICTORY:
-		if event is InputEventKey and event.keycode == KEY_SPACE:
-			AudioManager.unlock()
-			_new_game()
-		return
 	if event.is_action_pressed("pause"):
 		if state == State.PLAYING or state == State.IDLE:
 			_pause_game()
@@ -118,7 +112,6 @@ func _process(_delta: float) -> void:
 			balls_in_play = 1
 			held_ball = null
 			state = State.PLAYING
-			hud.hide_tap_prompt()
 	elif state == State.LEVEL_CLEAR:
 		if Input.is_action_just_pressed("press"):
 			AudioManager.unlock()
@@ -155,7 +148,6 @@ func _on_ball_lost(ball: Node) -> void:
 		hud.set_lives(lives)
 		if lives <= 0:
 			state = State.GAME_OVER
-			hud.hide_tap_prompt()
 			var new_best := SaveManager.record_game_end(score, false)
 			hud.set_high_score(SaveManager.high_score)
 			hud.show_game_over(score, SaveManager.high_score, new_best, SaveManager.games_played, SaveManager.games_won)
@@ -163,7 +155,6 @@ func _on_ball_lost(ball: Node) -> void:
 			_clear_powerups()
 			_spawn_held_ball()
 			state = State.IDLE
-			hud.show_tap_prompt()
 
 func _on_brick_scored(points: int, _pos: Vector2, _tier: int) -> void:
 	score += points
@@ -218,7 +209,6 @@ func _on_level_cleared() -> void:
 	if state != State.PLAYING:
 		return
 	state = State.LEVEL_CLEAR
-	hud.hide_tap_prompt()
 	_clear_balls()
 	_clear_powerups()
 	var was_perfect := _lives_lost_this_level == 0 and _level_points > 0
@@ -232,13 +222,9 @@ func _on_level_cleared() -> void:
 	if level >= MAX_LEVEL:
 		state = State.VICTORY
 		hud.hide_perfect()
-		hud.hide_tap_prompt()
 		var new_best := SaveManager.record_game_end(score, true)
 		hud.set_high_score(SaveManager.high_score)
 		hud.show_victory(score, SaveManager.high_score, new_best, SaveManager.games_played, SaveManager.games_won)
-		return
-	if was_perfect:
-		hud.show_tap_prompt("TAP TO CONTINUE")
 		return
 	hud.show_level_transition("LEVEL %d" % (level + 1))
 	await get_tree().create_timer(1.4).timeout
@@ -249,7 +235,6 @@ func _advance_after_perfect() -> void:
 	if state != State.LEVEL_CLEAR:
 		return
 	hud.hide_perfect()
-	hud.hide_tap_prompt()
 	level += 1
 	_start_level()
 
@@ -258,7 +243,6 @@ func _pause_game() -> void:
 		return
 	state = State.PAUSED
 	get_tree().paused = true
-	hud.hide_tap_prompt()
 	hud.set_pause_menu_visible(true, max_unlocked_level)
 
 func _on_pause_requested() -> void:
@@ -271,7 +255,6 @@ func _on_resume_requested() -> void:
 	hud.set_pause_menu_visible(false, max_unlocked_level)
 	if is_instance_valid(held_ball):
 		state = State.IDLE
-		hud.show_tap_prompt()
 	else:
 		state = State.PLAYING
 

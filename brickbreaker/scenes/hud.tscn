@@ -1,8 +1,11 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scenes/hud.gd" id="1"]
 [ext_resource type="FontFile" path="res://fonts/ComicNeue-Bold.ttf" id="2"]
 [ext_resource type="Script" path="res://scenes/bang_backdrop.gd" id="3"]
+
+[ext_resource type="Texture2D" path="res://art/buttons/share_icon.png" id="6"]
+[ext_resource type="Texture2D" path="res://art/buttons/reload_icon.png" id="7"]
 
 [node name="HUD" type="CanvasLayer"]
 process_mode = 3
@@ -129,11 +132,26 @@ text = "Games: 0 · Wins: 0"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ShareBtn" type="Button" parent="GameOverPanel/Content"]
+[node name="ActionButtons" type="HBoxContainer" parent="GameOverPanel/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ShareBtn" type="Button" parent="GameOverPanel/Content/ActionButtons"]
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 20
+icon = ExtResource("6")
+custom_minimum_size = Vector2(90, 48)
 text = "Share"
+
+[node name="RestartBtn" type="Button" parent="GameOverPanel/Content/ActionButtons"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("2")
+theme_override_font_sizes/font_size = 20
+icon = ExtResource("7")
+custom_minimum_size = Vector2(90, 48)
+text = "Restart"
 
 [node name="ShareConfirm" type="Label" parent="GameOverPanel/Content"]
 visible = false
@@ -142,25 +160,6 @@ theme_override_colors/font_color = Color(0.3, 0.8, 0.4, 1)
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 16
 text = "Copied!"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="TapPrompt" type="Label" parent="GameOverPanel"]
-visible = false
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -120.0
-offset_top = -36.0
-offset_right = 120.0
-offset_bottom = -8.0
-grow_horizontal = 2
-theme_override_fonts/font = ExtResource("2")
-theme_override_font_sizes/font_size = 24
-text = "TAP TO PLAY AGAIN"
 horizontal_alignment = 1
 vertical_alignment = 1
 

@@ -7,13 +7,14 @@ const MAX_LEVEL := 10
 @onready var score_label: Label = $Score
 @onready var best_score_label: Label = $BestScore
 @onready var lives_label: Label = $Lives
-@onready var tap_prompt: Label = $GameOverPanel/TapPrompt
+@onready var action_buttons: HBoxContainer = $GameOverPanel/Content/ActionButtons
+@onready var restart_btn: Button = $GameOverPanel/Content/ActionButtons/RestartBtn
 @onready var title_label: Label = $GameOverPanel/Content/TitleLabel
 @onready var final_score: Label = $GameOverPanel/Content/FinalScore
 @onready var best_score_line: Label = $GameOverPanel/Content/BestScoreLine
 @onready var new_best_badge: Label = $GameOverPanel/Content/NewBestBadge
 @onready var stats_line: Label = $GameOverPanel/Content/StatsLine
-@onready var share_btn: Button = $GameOverPanel/Content/ShareBtn
+@onready var share_btn: Button = $GameOverPanel/Content/ActionButtons/ShareBtn
 @onready var share_confirm: Label = $GameOverPanel/Content/ShareConfirm
 @onready var bang_backdrop: Control = $GameOverPanel/BangBackdrop
 @onready var game_over_panel: MarginContainer = $GameOverPanel
@@ -48,7 +49,6 @@ func _ready() -> void:
 	_gold_mat.shader = RAINBOW_SHADER
 	_gold_mat.set_shader_parameter("speed", 2.5)
 	_gold_mat.set_shader_parameter("gold_mode", 1.0)
-	tap_prompt.hide()
 	game_over_panel.hide()
 	perfect_badge.hide()
 	new_best_badge.hide()
@@ -60,6 +60,7 @@ func _ready() -> void:
 	$PauseOverlay/LevelSelectPanel/VBox/BackBtn.pressed.connect(_hide_level_select)
 	$PauseOverlay/PauseMenu/LevelSelectBtn.pressed.connect(_show_level_select)
 	share_btn.pressed.connect(_on_share_pressed)
+	restart_btn.pressed.connect(func(): restart_requested.emit())
 
 func set_score(value: int) -> void:
 	score_label.text = "SCORE %d" % value
@@ -76,36 +77,22 @@ func slam_score() -> void:
 	_slam_in(score_label, 0.15)
 	_bump(score_label)
 
-func show_tap_prompt(text: String = "TAP TO PLAY") -> void:
-	tap_prompt.text = text
-	tap_prompt.show()
-	_start_float(tap_prompt)
-
-func hide_tap_prompt() -> void:
-	_stop_float(tap_prompt)
-	tap_prompt.hide()
-
 func show_game_over(score: int, high_score: int, new_best: bool, games_played: int, games_won: int) -> void:
-	hide_tap_prompt()
 	game_over_panel.show()
 	title_label.text = "GAME OVER"
 	_show_end_panel(score, high_score, new_best, games_played, games_won)
-	show_tap_prompt("TAP TO PLAY AGAIN")
 
 func hide_game_over() -> void:
 	game_over_panel.hide()
 	title_label.hide()
 	new_best_badge.hide()
 	share_confirm.hide()
-	hide_tap_prompt()
 
 func show_victory(score: int, high_score: int, new_best: bool, games_played: int, games_won: int) -> void:
-	hide_tap_prompt()
 	hide_game_over()
 	title_label.text = "YOU WIN!"
 	game_over_panel.show()
 	_show_end_panel(score, high_score, new_best, games_played, games_won)
-	show_tap_prompt("TAP TO PLAY AGAIN")
 
 func hide_victory() -> void:
 	hide_game_over()
@@ -174,7 +161,14 @@ func show_level_transition(text: String) -> void:
 	tween.tween_property(label, "modulate:a", 0.0, 0.4)
 	tween.tween_callback(label.queue_free)
 
+func _animate_button_press(btn: Button) -> void:
+	var orig_scale := btn.scale
+	var tween := create_tween().set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+	tween.tween_property(btn, "scale", orig_scale * 0.85, 0.08)
+	tween.tween_property(btn, "scale", orig_scale, 0.18)
+
 func _on_share_pressed() -> void:
+	_animate_button_press(share_btn)
 	var score_text := final_score.text.split(" ")[1]
 	var best_text := best_score_line.text.split(" ")[1]
 	var msg := "I scored %s points in Brickbreaker! Best: %s.\nCan you beat me?" % [score_text, best_text]
