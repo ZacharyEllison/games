@@ -1,11 +1,8 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scenes/hud.gd" id="1"]
 [ext_resource type="FontFile" path="res://fonts/ComicNeue-Bold.ttf" id="2"]
 [ext_resource type="Script" path="res://scenes/bang_backdrop.gd" id="3"]
-
-[ext_resource type="Texture2D" path="res://art/buttons/share_icon.png" id="6"]
-[ext_resource type="Texture2D" path="res://art/buttons/reload_icon.png" id="7"]
 
 [node name="HUD" type="CanvasLayer"]
 process_mode = 3
@@ -141,7 +138,6 @@ alignment = 1
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 20
-icon = ExtResource("6")
 custom_minimum_size = Vector2(90, 48)
 text = "Share"
 
@@ -149,7 +145,6 @@ text = "Share"
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2")
 theme_override_font_sizes/font_size = 20
-icon = ExtResource("7")
 custom_minimum_size = Vector2(90, 48)
 text = "Restart"
 

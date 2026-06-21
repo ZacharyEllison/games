@@ -3,6 +3,10 @@ extends CanvasLayer
 const RAINBOW_SHADER := preload("res://shaders/rainbow_shimmer.gdshader")
 const COMIC_FONT := preload("res://fonts/ComicNeue-Bold.ttf")
 const MAX_LEVEL := 10
+const BRICK_SHARE_NORMAL := preload("res://art/kenney_brick-pack/PNG/Default/Red/brick_medium_1.png")
+const BRICK_SHARE_HOVER := preload("res://art/kenney_brick-pack/PNG/Default/Red/brick_medium_2.png")
+const BRICK_RESTART_NORMAL := preload("res://art/kenney_brick-pack/PNG/Default/Red/brick_medium_1.png")
+const BRICK_RESTART_HOVER := preload("res://art/kenney_brick-pack/PNG/Default/Red/brick_medium_2.png")
 
 @onready var score_label: Label = $Score
 @onready var best_score_label: Label = $BestScore
@@ -29,6 +33,8 @@ const MAX_LEVEL := 10
 var _rainbow_mat: ShaderMaterial
 var _gold_mat: ShaderMaterial
 var _float_tweens: Dictionary = {}
+var _share_stylebox: StyleBoxTexture
+var _restart_stylebox: StyleBoxTexture
 
 signal pause_requested
 signal resume_requested
@@ -61,6 +67,24 @@ func _ready() -> void:
 	$PauseOverlay/PauseMenu/LevelSelectBtn.pressed.connect(_show_level_select)
 	share_btn.pressed.connect(_on_share_pressed)
 	restart_btn.pressed.connect(func(): restart_requested.emit())
+
+	# Share button brick style
+	_share_stylebox = StyleBoxTexture.new()
+	_share_stylebox.texture = BRICK_SHARE_NORMAL
+	_share_stylebox.set_expand_margin_all(4.0)
+	share_btn.add_theme_stylebox_override("normal", _share_stylebox)
+	share_btn.add_theme_stylebox_override("hover", _share_hover_style())
+	share_btn.add_theme_constant_override("outline_size", 2)
+	share_btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
+
+	# Restart button brick style
+	var restart_stylebox := StyleBoxTexture.new()
+	restart_stylebox.texture = BRICK_RESTART_NORMAL
+	restart_stylebox.set_expand_margin_all(4.0)
+	restart_btn.add_theme_stylebox_override("normal", restart_stylebox)
+	restart_btn.add_theme_stylebox_override("hover", _restart_hover_style())
+	restart_btn.add_theme_constant_override("outline_size", 2)
+	restart_btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
 
 func set_score(value: int) -> void:
 	score_label.text = "SCORE %d" % value
@@ -275,3 +299,15 @@ func _bump(node: Control) -> void:
 	node.scale = Vector2(1.3, 1.3)
 	var tween := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(node, "scale", Vector2.ONE, 0.25)
+
+func _share_hover_style() -> StyleBoxTexture:
+	var sb := StyleBoxTexture.new()
+	sb.texture = BRICK_SHARE_HOVER
+	sb.set_expand_margin_all(4.0)
+	return sb
+
+func _restart_hover_style() -> StyleBoxTexture:
+	var sb := StyleBoxTexture.new()
+	sb.texture = BRICK_RESTART_HOVER
+	sb.set_expand_margin_all(4.0)
+	return sb
