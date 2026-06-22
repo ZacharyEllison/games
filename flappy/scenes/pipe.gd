@@ -8,14 +8,16 @@ extends Node2D
 
 var rect: ColorRect
 
+
 func _ready() -> void:
-	rect = ColorRect.new()
-	rect.color = color
-	add_child(rect)
-	rect.position = Vector2.ZERO
-	rect.size = Vector2(width, height)
+    rect = ColorRect.new()
+    rect.color = color
+    add_child(rect)
+    rect.position = Vector2.ZERO
+    rect.size = Vector2(width, height)
+
 
 func _process(delta: float) -> void:
-	position.x -= speed * delta
-	if position.x + width < 0:
-		queue_free()
+    position.x -= speed * delta
+    if position.x + width < 0:
+        queue_free()

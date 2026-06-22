@@ -1,6 +1,7 @@
 .godot/
 .vscode/
 */.godot/
+tools/gdscript-formatter
 index.apple-touch-icon.png.import
 index.icon.png.import
 index.png.import
