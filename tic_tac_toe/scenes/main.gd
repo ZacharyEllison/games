@@ -1,17 +1,8 @@
 extends Control
 
-const BOARD_WIDTH := 3
+const GRID_PRESETS := [3, 4, 5, 6, 7]
+const WIN_LENGTH := 4
 const EMPTY_CELL := ""
-const WIN_LINES := [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6],
-]
 
 const BACKGROUND_COLOR := Color8(28, 31, 43)
 const PANEL_COLOR := Color8(36, 50, 74)
@@ -42,6 +33,14 @@ var _tween_refs: Array[Tween] = []
 
 var status_label: Label
 var score_label: Label
+
+var grid_size := 3
+var BOARD_WIDTH: int = 3
+var _current_win_lines: Array[PackedInt32Array] = []
+var _grid: GridContainer
+var _grid_size_layout: HBoxContainer
+var _selected_grid_btn: Button
+var _board_margin: MarginContainer
 
 
 func _ready() -> void:
@@ -78,6 +77,27 @@ func _build_ui() -> void:
     title.add_theme_color_override("font_color", TEXT_COLOR)
     layout.add_child(title)
 
+    # Grid size preset buttons
+    var grid_size_layout := HBoxContainer.new()
+    grid_size_layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    layout.add_child(grid_size_layout)
+    _grid_size_layout = grid_size_layout
+
+    for preset in GRID_PRESETS:
+        var btn := Button.new()
+        btn.text = "%d×%d" % [preset, preset]
+        btn.custom_minimum_size = Vector2(0, 48)
+        btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        _style_action_button(btn, PANEL_COLOR, PANEL_BORDER_COLOR, TEXT_COLOR)
+        btn.pressed.connect(_select_grid_size.bind(preset))
+        grid_size_layout.add_child(btn)
+
+    _selected_grid_btn = grid_size_layout.get_child(0) as Button
+    _selected_grid_btn.add_theme_stylebox_override(
+        "normal",
+        _make_panel_style(HIGHLIGHT_COLOR.darkened(0.18), HIGHLIGHT_COLOR, 22, 3),
+    )
+
     status_label = Label.new()
     status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     status_label.add_theme_font_size_override("font_size", 26)
@@ -102,7 +122,9 @@ func _build_ui() -> void:
     board_margin.add_theme_constant_override("margin_top", 18)
     board_margin.add_theme_constant_override("margin_right", 18)
     board_margin.add_theme_constant_override("margin_bottom", 18)
+    _apply_board_margins(board_margin, grid_size)
     board_panel.add_child(board_margin)
+    _board_margin = board_margin
 
     var board_center := CenterContainer.new()
     board_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -116,27 +138,17 @@ func _build_ui() -> void:
     board_center.add_child(aspect)
 
     var grid := GridContainer.new()
-    grid.columns = BOARD_WIDTH
+    grid.columns = grid_size
     grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
     grid.add_theme_constant_override("h_separation", 12)
     grid.add_theme_constant_override("v_separation", 12)
+    _apply_grid_margins(grid, grid_size)
+    _grid = grid
     aspect.add_child(grid)
 
-    for index in range(BOARD_WIDTH * BOARD_WIDTH):
-        var cell := PanelContainer.new()
-        cell.focus_mode = Control.FOCUS_NONE
-        cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        cell.size_flags_vertical = Control.SIZE_EXPAND_FILL
-        cell.add_theme_stylebox_override("panel", _make_panel_style(TILE_IDLE_COLOR, PANEL_BORDER_COLOR, 24, 4))
-        var mark_texture := TextureRect.new()
-        mark_texture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-        mark_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-        mark_texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
-        cell.add_child(mark_texture)
-        cell.gui_input.connect(_on_cell_input.bind(index))
-        grid.add_child(cell)
-        cells.append(cell)
+    for index in range(grid_size * grid_size):
+        _create_cell(index, grid)
 
     var actions := HBoxContainer.new()
     actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -167,9 +179,8 @@ func _build_ui() -> void:
     helper_text.add_theme_font_size_override("font_size", 18)
     helper_text.add_theme_color_override("font_color", MUTED_TEXT_COLOR)
     helper_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-layout.add_child(helper_text)
+    layout.add_child(helper_text)
 
-layout.add_child(helper_text)
 
 func _on_cell_input(index: int, event: InputEvent) -> void:
     if event is not InputEventMouseButton:
@@ -185,6 +196,7 @@ func _on_cell_input(index: int, event: InputEvent) -> void:
         return
 
     board[index] = current_player
+    animate_bump(cell)
 
     # Set the kenney icon texture on this cell's TextureRect
     var mark_rect := _get_mark_texture_rect(cell)
@@ -193,18 +205,16 @@ func _on_cell_input(index: int, event: InputEvent) -> void:
     var winner := _find_winner()
     if winner != EMPTY_CELL:
         game_over = true
-        scores[winner] += 1
-        _set_status("Player %s wins!" % winner, _player_color(winner))
-        animate_bump(cell)
-
-        game_over = true
-        scores["Draws"] += 1
-        _set_status("Draw game", HIGHLIGHT_COLOR)
-        animate_bump(cell)
+        if winner == "DRAW":
+            scores["Draws"] += 1
+            _set_status("Draw game", HIGHLIGHT_COLOR)
+        else:
+            scores[winner] += 1
+            _set_status("Player %s wins!" % winner, _player_color(winner))
+            animate_win_line(highlighted_line)
     else:
         current_player = _next_player(current_player)
         _set_status("Player %s's turn" % current_player, _player_color(current_player))
-        animate_bump(cell)
 
     _refresh_board()
     _refresh_score()
@@ -216,13 +226,16 @@ func _start_round() -> void:
         t.kill()
     _tween_refs.clear()
     board.clear()
-    for _index in range(BOARD_WIDTH * BOARD_WIDTH):
+    for _index in range(grid_size * grid_size):
         board.append(EMPTY_CELL)
 
     current_player = starting_player
     starting_player = _next_player(starting_player)
     game_over = false
     highlighted_line = PackedInt32Array()
+    var effective_wl: int = min(WIN_LENGTH, grid_size)
+
+    _current_win_lines = _build_win_lines(grid_size, effective_wl)
 
     _set_status("Player %s starts" % current_player, _player_color(current_player))
     _refresh_board()
@@ -279,16 +292,25 @@ func _refresh_score() -> void:
 func _find_winner() -> String:
     highlighted_line = PackedInt32Array()
 
-    for line in WIN_LINES:
+    for line in _current_win_lines:
         var first := board[line[0]]
         if first == EMPTY_CELL:
             continue
-
-        if first == board[line[1]] and first == board[line[2]]:
+        var aligned := true
+        for k in range(1, line.size()):
+            if board[line[k]] != first:
+                aligned = false
+                break
+        if aligned:
             highlighted_line = line
             return first
 
-    return EMPTY_CELL
+    # Check draw
+    for cell in board:
+        if cell == EMPTY_CELL:
+            return EMPTY_CELL # not a draw yet
+
+    return "DRAW"
 
 
 func _next_player(player: String) -> String:
@@ -359,3 +381,150 @@ func _get_mark_texture_rect(cell: PanelContainer) -> TextureRect:
         if child is TextureRect:
             return child as TextureRect
     return null
+
+# --- Grid preset helpers ---
+
+
+func _create_cell(index: int, grid: GridContainer) -> PanelContainer:
+    var cell := PanelContainer.new()
+    cell.focus_mode = Control.FOCUS_NONE
+    cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    cell.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    cell.add_theme_stylebox_override("panel", _make_panel_style(TILE_IDLE_COLOR, PANEL_BORDER_COLOR, 24, 4))
+    var mark_texture := TextureRect.new()
+    mark_texture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    mark_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+    mark_texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    cell.add_child(mark_texture)
+    cell.gui_input.connect(_on_cell_input.bind(index))
+    grid.add_child(cell)
+    cells.append(cell)
+    return cell
+
+
+func _apply_grid_margins(grid: GridContainer, size: int) -> void:
+    if size >= 7:
+        grid.add_theme_constant_override("h_separation", 4)
+        grid.add_theme_constant_override("v_separation", 4)
+    elif size >= 5:
+        grid.add_theme_constant_override("h_separation", 8)
+        grid.add_theme_constant_override("v_separation", 8)
+    else:
+        grid.add_theme_constant_override("h_separation", 12)
+        grid.add_theme_constant_override("v_separation", 12)
+
+
+func _apply_board_margins(mc: MarginContainer, size: int) -> void:
+    if size >= 7:
+        mc.add_theme_constant_override("margin_left", 8)
+        mc.add_theme_constant_override("margin_top", 8)
+        mc.add_theme_constant_override("margin_right", 8)
+        mc.add_theme_constant_override("margin_bottom", 8)
+    elif size >= 5:
+        mc.add_theme_constant_override("margin_left", 12)
+        mc.add_theme_constant_override("margin_top", 12)
+        mc.add_theme_constant_override("margin_right", 12)
+        mc.add_theme_constant_override("margin_bottom", 12)
+    else:
+        # default: already set to 18 in _build_ui — no change needed
+        pass
+
+
+func _build_win_lines(gsz: int, wl: int) -> Array[PackedInt32Array]:
+    var lines: Array[PackedInt32Array] = []
+    var cols := gsz
+
+    # Horizontal (rows)
+    for r in range(gsz):
+        for start_c in range(cols - wl + 1):
+            var line := PackedInt32Array()
+            for k in range(wl):
+                line.append(r * cols + start_c + k)
+            lines.append(line)
+
+    # Vertical (columns)
+    for c in range(cols - wl + 1):
+        for start_r in range(gsz):
+            var line := PackedInt32Array()
+            for k in range(wl):
+                line.append((start_r + k) * cols + c)
+            lines.append(line)
+
+    # Diagonals top-left → bottom-right
+    for start_r in range(gsz - wl + 1):
+        for start_c in range(cols - wl + 1):
+            var line := PackedInt32Array()
+            for k in range(wl):
+                line.append((start_r + k) * cols + (start_c + k))
+            lines.append(line)
+
+    # Diagonals top-right → bottom-left
+    for start_r in range(gsz - wl + 1):
+        for start_c in range(wl - 1, cols):
+            var line := PackedInt32Array()
+            for k in range(wl):
+                line.append((start_r + k) * cols + (start_c - k))
+            lines.append(line)
+
+    return lines
+
+
+func _select_grid_size(preset: int) -> void:
+    if preset == grid_size:
+        return # no change needed
+
+    var effective_wl: int = min(WIN_LENGTH, preset)
+    var new_win_lines = _build_win_lines(preset, effective_wl)
+
+    # Revert previous button styling
+    if _selected_grid_btn:
+        _selected_grid_btn.add_theme_stylebox_override(
+            "normal",
+            _make_panel_style(PANEL_COLOR, PANEL_BORDER_COLOR, 22, 3),
+        )
+
+    # Highlight the new active button (match by text)
+    for i in range(_grid_size_layout.get_child_count()):
+        var child = _grid_size_layout.get_child(i)
+        if child is Button:
+            var btn := child as Button
+            if btn.text == "%d×%d" % [preset, preset]:
+                _selected_grid_btn = btn
+                btn.add_theme_stylebox_override(
+                    "normal",
+                    _make_panel_style(HIGHLIGHT_COLOR.darkened(0.18), HIGHLIGHT_COLOR, 22, 3),
+                )
+                break
+
+    # Rebuild the board
+    grid_size = preset
+    BOARD_WIDTH = preset
+    _current_win_lines = new_win_lines
+
+    for t in _tween_refs:
+        t.kill()
+    _tween_refs.clear()
+
+    board.clear()
+    cells.clear()
+
+    # Remove old cells from grid
+    for c in _grid.get_children():
+        c.queue_free()
+
+    # Create new cells
+    var gsz := grid_size
+    _grid.columns = preset
+    for idx in range(gsz * gsz):
+        _create_cell(idx, _grid)
+    _apply_grid_margins(_grid, gsz)
+    if _board_margin:
+        _apply_board_margins(_board_margin, gsz)
+
+    current_player = starting_player
+    starting_player = _next_player(starting_player)
+    game_over = false
+
+    _set_status("Player %s starts" % current_player, _player_color(current_player))
+    _refresh_board()
+    _refresh_score()
