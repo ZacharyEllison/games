@@ -36,6 +36,7 @@ var _paddle_y := 612.0
 @onready var grid: Node2D = $BrickGrid
 @onready var hud: CanvasLayer = $HUD
 
+
 func _ready() -> void:
 	randomize()
 	var screen := get_viewport_rect().size
@@ -52,8 +53,10 @@ func _ready() -> void:
 	hud.set_high_score(SaveManager.high_score)
 	_new_game()
 
+
 func _paddle_y_for_screen() -> float:
 	return get_viewport_rect().size.y * 0.85
+
 
 func _new_game() -> void:
 	get_tree().paused = false
@@ -70,7 +73,9 @@ func _new_game() -> void:
 	hud.set_pause_menu_visible(false, max_unlocked_level)
 	_start_level()
 
+
 func _start_level() -> void:
+	hud.hide_perfect()
 	_clear_balls()
 	_clear_powerups()
 	_paddle_y = _paddle_y_for_screen()
@@ -82,6 +87,7 @@ func _start_level() -> void:
 	_spawn_held_ball()
 	state = State.IDLE
 
+
 func _make_ball(kind: int, speed_scale: float = 1.0) -> CharacterBody2D:
 	var ball: CharacterBody2D = BALL.instantiate()
 	add_child(ball)
@@ -91,9 +97,11 @@ func _make_ball(kind: int, speed_scale: float = 1.0) -> CharacterBody2D:
 	ball.nice_catch.connect(_on_nice_catch)
 	return ball
 
+
 func _spawn_held_ball() -> void:
 	held_ball = _make_ball(0)
 	held_ball.active = false
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
@@ -101,6 +109,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_pause_game()
 		elif state == State.PAUSED:
 			_on_resume_requested()
+
 
 func _process(_delta: float) -> void:
 	if state == State.PAUSED:
@@ -118,6 +127,7 @@ func _process(_delta: float) -> void:
 			AudioManager.unlock()
 			_advance_after_perfect()
 
+
 func spawn_extra_balls(pos: Vector2, count: int, speed_scale: float = 1.0) -> void:
 	if state != State.PLAYING:
 		return
@@ -128,13 +138,16 @@ func spawn_extra_balls(pos: Vector2, count: int, speed_scale: float = 1.0) -> vo
 		ball.launch(Vector2(sin(angle), -cos(angle)))
 		balls_in_play += 1
 
+
 func explode_at(pos: Vector2, radius: float) -> void:
 	for brick in get_tree().get_nodes_in_group("bricks"):
 		if is_instance_valid(brick) and brick.global_position.distance_to(pos) <= radius:
 			brick.shatter()
 
+
 func _on_nice_catch(pos: Vector2) -> void:
 	hud.show_slam_text("NICE CATCH!", pos)
+
 
 func _on_ball_lost(ball: Node) -> void:
 	if is_instance_valid(ball):
@@ -157,15 +170,18 @@ func _on_ball_lost(ball: Node) -> void:
 			_spawn_held_ball()
 			state = State.IDLE
 
+
 func _on_brick_scored(points: int, _pos: Vector2, _tier: int) -> void:
 	score += points
 	_level_points += points
 	hud.set_score(score)
 
+
 func _on_brick_destroyed(pos: Vector2, tier: int) -> void:
 	var chance: float = POWERUP_CHANCE_BY_TIER.get(tier, 0.03)
 	if randf() < chance:
 		_drop_powerup(pos, tier)
+
 
 func _pick_powerup_kind(tier: int) -> int:
 	if tier == 1:
@@ -181,12 +197,14 @@ func _pick_powerup_kind(tier: int) -> int:
 		return 2
 	return randi() % 4
 
+
 func _drop_powerup(pos: Vector2, tier: int) -> void:
 	var powerup: Area2D = POWERUP.instantiate()
 	add_child(powerup)
 	powerup.global_position = pos
 	powerup.set_kind(_pick_powerup_kind(tier))
 	powerup.collected.connect(_on_powerup_collected)
+
 
 func _on_powerup_collected(kind: int) -> void:
 	match kind:
@@ -205,6 +223,7 @@ func _on_powerup_collected(kind: int) -> void:
 		3: # ONE_UP
 			lives += 1
 			hud.set_lives(lives)
+
 
 func _on_level_cleared() -> void:
 	if state != State.PLAYING:
@@ -229,8 +248,11 @@ func _on_level_cleared() -> void:
 		return
 	hud.show_level_transition("LEVEL %d" % (level + 1))
 	await get_tree().create_timer(1.4).timeout
+	if state != State.LEVEL_CLEAR:
+		return
 	level += 1
 	_start_level()
+
 
 func _advance_after_perfect() -> void:
 	if state != State.LEVEL_CLEAR:
@@ -239,6 +261,7 @@ func _advance_after_perfect() -> void:
 	level += 1
 	_start_level()
 
+
 func _pause_game() -> void:
 	if state != State.PLAYING and state != State.IDLE:
 		return
@@ -246,8 +269,10 @@ func _pause_game() -> void:
 	get_tree().paused = true
 	hud.set_pause_menu_visible(true, max_unlocked_level)
 
+
 func _on_pause_requested() -> void:
 	_pause_game()
+
 
 func _on_resume_requested() -> void:
 	if state != State.PAUSED:
@@ -259,10 +284,12 @@ func _on_resume_requested() -> void:
 	else:
 		state = State.PLAYING
 
+
 func _on_restart_from_pause() -> void:
 	get_tree().paused = false
 	hud.set_pause_menu_visible(false, max_unlocked_level)
 	_new_game()
+
 
 func _on_level_selected(selected_level: int) -> void:
 	get_tree().paused = false
@@ -275,11 +302,13 @@ func _on_level_selected(selected_level: int) -> void:
 	hud.hide_victory()
 	_start_level()
 
+
 func _clear_balls() -> void:
 	held_ball = null
 	for ball in get_tree().get_nodes_in_group("balls"):
 		ball.queue_free()
 	balls_in_play = 0
+
 
 func _clear_powerups() -> void:
 	for powerup in get_tree().get_nodes_in_group("powerups"):

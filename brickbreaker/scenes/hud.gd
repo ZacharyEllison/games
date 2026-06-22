@@ -32,7 +32,7 @@ const BRICK_RESTART_HOVER := preload("res://art/kenney_brick-pack/PNG/Default/Re
 
 var _rainbow_mat: ShaderMaterial
 var _gold_mat: ShaderMaterial
-var _float_tweens: Dictionary = {}
+var _float_tweens: Dictionary = { }
 var _share_stylebox: StyleBoxTexture
 var _restart_stylebox: StyleBoxTexture
 
@@ -41,9 +41,11 @@ signal resume_requested
 signal restart_requested
 signal level_selected(level: int)
 
+
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause") and pause_overlay.visible:
 		resume_requested.emit()
+
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -86,25 +88,31 @@ func _ready() -> void:
 	restart_btn.add_theme_constant_override("outline_size", 2)
 	restart_btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1))
 
+
 func set_score(value: int) -> void:
 	score_label.text = "SCORE %d" % value
 	_bump(score_label)
 
+
 func set_high_score(value: int) -> void:
 	best_score_label.text = "BEST %d" % value
+
 
 func set_lives(value: int) -> void:
 	lives_label.text = "LIVES %d" % value
 	_bump(lives_label)
 
+
 func slam_score() -> void:
 	_slam_in(score_label, 0.15)
 	_bump(score_label)
+
 
 func show_game_over(score: int, high_score: int, new_best: bool, games_played: int, games_won: int) -> void:
 	game_over_panel.show()
 	title_label.text = "GAME OVER"
 	_show_end_panel(score, high_score, new_best, games_played, games_won)
+
 
 func hide_game_over() -> void:
 	game_over_panel.hide()
@@ -112,14 +120,17 @@ func hide_game_over() -> void:
 	new_best_badge.hide()
 	share_confirm.hide()
 
+
 func show_victory(score: int, high_score: int, new_best: bool, games_played: int, games_won: int) -> void:
 	hide_game_over()
 	title_label.text = "YOU WIN!"
 	game_over_panel.show()
 	_show_end_panel(score, high_score, new_best, games_played, games_won)
 
+
 func hide_victory() -> void:
 	hide_game_over()
+
 
 func _show_end_panel(score: int, high_score: int, new_best: bool, games_played: int, games_won: int) -> void:
 	share_btn.show()
@@ -140,16 +151,19 @@ func _show_end_panel(score: int, high_score: int, new_best: bool, games_played: 
 		new_best_badge.material = _gold_mat
 		_slam_in(new_best_badge, 0.25)
 
+
 func show_perfect() -> void:
 	perfect_badge.show()
 	perfect_badge.material = _gold_mat
 	_slam_in(perfect_badge, 0.25)
 	_start_float(perfect_badge)
 
+
 func hide_perfect() -> void:
 	_stop_float(perfect_badge)
 	perfect_badge.hide()
 	perfect_badge.modulate.a = 1.0
+
 
 func show_slam_text(text: String, world_pos: Vector2) -> void:
 	var label := Label.new()
@@ -168,6 +182,7 @@ func show_slam_text(text: String, world_pos: Vector2) -> void:
 	tween.tween_property(label, "modulate:a", 0.0, 0.35)
 	tween.tween_callback(label.queue_free)
 
+
 func show_level_transition(text: String) -> void:
 	var label := Label.new()
 	label.text = text
@@ -176,8 +191,12 @@ func show_level_transition(text: String) -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	floating_layer.add_child(label)
+	var layer_size := floating_layer.get_rect().size
 	label.size = Vector2(320, 60)
-	label.position = Vector2(-160, -30)
+	label.position = Vector2(
+		(layer_size.x - label.size.x) * 0.5,
+		layer_size.y * 0.5 - 150,
+	)
 	label.pivot_offset = label.size * 0.5
 	_slam_in(label, 0.3)
 	var tween := create_tween()
@@ -185,11 +204,13 @@ func show_level_transition(text: String) -> void:
 	tween.tween_property(label, "modulate:a", 0.0, 0.4)
 	tween.tween_callback(label.queue_free)
 
+
 func _animate_button_press(btn: Button) -> void:
 	var orig_scale := btn.scale
 	var tween := create_tween().set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 	tween.tween_property(btn, "scale", orig_scale * 0.85, 0.08)
 	tween.tween_property(btn, "scale", orig_scale, 0.18)
+
 
 func _on_share_pressed() -> void:
 	_animate_button_press(share_btn)
@@ -206,15 +227,19 @@ func _on_share_pressed() -> void:
 	btn_tween.tween_property(share_btn, "modulate:a", 0.5, 0.1)
 	btn_tween.tween_property(share_btn, "modulate:a", 1.0, 0.2)
 
+
 func set_pause_menu_visible(visible: bool, max_level: int) -> void:
 	if visible:
 		pause_overlay.show()
+		pause_menu.show()
 		level_select_panel.hide()
 		_animate_pause_menu_in()
 		_build_level_buttons(max_level)
 	else:
 		pause_overlay.hide()
+		pause_menu.show()
 		level_select_panel.hide()
+
 
 func _build_level_buttons(max_unlocked: int) -> void:
 	for child in level_select_grid.get_children():
@@ -232,6 +257,7 @@ func _build_level_buttons(max_unlocked: int) -> void:
 			btn.pressed.connect(func(): level_selected.emit(lvl))
 		level_select_grid.add_child(btn)
 
+
 func _show_level_select() -> void:
 	pause_menu.hide()
 	level_select_panel.show()
@@ -243,9 +269,11 @@ func _show_level_select() -> void:
 		tween.tween_interval(i * 0.04)
 		tween.tween_property(btn, "scale", Vector2.ONE, 0.25)
 
+
 func _hide_level_select() -> void:
 	level_select_panel.hide()
 	pause_menu.show()
+
 
 func _animate_pause_menu_in() -> void:
 	for i in pause_menu.get_child_count():
@@ -257,14 +285,17 @@ func _animate_pause_menu_in() -> void:
 			tween.tween_interval(i * 0.05)
 			tween.tween_property(node, "scale", Vector2.ONE, 0.28)
 
+
 func _on_pause_btn_pressed() -> void:
 	if pause_overlay.visible:
 		resume_requested.emit()
 	else:
 		pause_requested.emit()
 
+
 func _on_resume() -> void:
 	resume_requested.emit()
+
 
 func _slam_in(node: Control, from_scale: float = 0.2) -> void:
 	node.scale = Vector2(from_scale, from_scale)
@@ -272,6 +303,7 @@ func _slam_in(node: Control, from_scale: float = 0.2) -> void:
 	var tween := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(node, "scale", Vector2(1.1, 1.1), 0.18)
 	tween.tween_property(node, "scale", Vector2.ONE, 0.12)
+
 
 func _start_float(node: Control) -> void:
 	_stop_float(node)
@@ -286,6 +318,7 @@ func _start_float(node: Control) -> void:
 	scale_tween.tween_property(node, "scale", base_scale * 0.95, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_float_tweens[node] = [rot_tween, scale_tween]
 
+
 func _stop_float(node: Control) -> void:
 	if _float_tweens.has(node):
 		for t in _float_tweens[node]:
@@ -294,17 +327,20 @@ func _stop_float(node: Control) -> void:
 		_float_tweens.erase(node)
 	node.rotation = 0.0
 
+
 func _bump(node: Control) -> void:
 	node.pivot_offset = node.size * 0.5
 	node.scale = Vector2(1.3, 1.3)
 	var tween := create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(node, "scale", Vector2.ONE, 0.25)
 
+
 func _share_hover_style() -> StyleBoxTexture:
 	var sb := StyleBoxTexture.new()
 	sb.texture = BRICK_SHARE_HOVER
 	sb.set_expand_margin_all(4.0)
 	return sb
+
 
 func _restart_hover_style() -> StyleBoxTexture:
 	var sb := StyleBoxTexture.new()
