@@ -69,10 +69,10 @@ All GDScript files are formatted using [GDScript-formatter](https://github.com/G
 
 ```bash
 # Format all .gd files in-place
-./tools/gdscript-formatter --safe .
+./tools/gdscript-formatter --use-spaces --safe .
 
 # Check if files need formatting (exit 0 = clean, exit 1 = changes needed)
-./tools/gdscript-formatter --check .
+./tools/gdscript-formatter --use-spaces --check .
 ```
 
 ## Documentation
